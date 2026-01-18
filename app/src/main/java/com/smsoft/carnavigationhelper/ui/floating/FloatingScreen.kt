@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -22,6 +23,7 @@ import kotlinx.coroutines.launch
 fun FloatingScreen(
     vm: FloatingViewModel = viewModel(),
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     CarNavigationHelperTheme {
         FloatingActionButton(
@@ -33,7 +35,7 @@ fun FloatingScreen(
                 ),
             onClick = {
                 scope.launch {
-                    vm.showApp()
+                    vm.showApp(context)
                 }
             },
         ) {
@@ -42,7 +44,7 @@ fun FloatingScreen(
                 contentDescription = stringResource(R.string.open_home),
                 tint = Color(0xFF30D5C8),
                 modifier = Modifier
-                    .background(Color.LightGray)
+                    .background(Color.DarkGray)
                     .padding(16.dp)
             )
         }

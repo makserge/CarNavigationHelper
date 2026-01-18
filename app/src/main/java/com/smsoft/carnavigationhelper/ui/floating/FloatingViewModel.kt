@@ -1,8 +1,10 @@
 package com.smsoft.carnavigationhelper.ui.floating
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
+import com.smsoft.carnavigationhelper.service.ButtonService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -22,7 +24,8 @@ class FloatingViewModel(
         userPreferencesRepository.setButtonPosition(x, y)
     }
 
-    suspend fun showApp() {
+    suspend fun showApp(context: Context) {
         _navigateToNext.emit(true)
+        ButtonService.hideButton(context)
     }
 }

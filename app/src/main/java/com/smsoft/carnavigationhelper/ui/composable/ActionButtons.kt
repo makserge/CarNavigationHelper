@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.smsoft.carnavigationhelper.R
@@ -25,6 +26,7 @@ fun ActionButtons(
     viewModel: MainViewModel
 ) {
     val activity = LocalActivity.current
+    val context = LocalContext.current
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.Center,
@@ -43,7 +45,7 @@ fun ActionButtons(
             Button(
                 modifier = Modifier.padding(top = 16.dp),
                 onClick = {
-                    viewModel.openNavAppLocationWork()
+                    viewModel.openNavAppLocationWork(context)
                 },
                 enabled = isEnabled
             ) {
@@ -53,7 +55,7 @@ fun ActionButtons(
             ElevatedButton(
                 modifier = Modifier.padding(top = 16.dp),
                 onClick = {
-                    viewModel.openNavAppLocationWork()
+                    viewModel.openNavAppLocationWork(context)
                 },
                 enabled = isEnabled
             ) {
@@ -64,7 +66,7 @@ fun ActionButtons(
             Button(
                 modifier = Modifier.padding(top = 16.dp),
                 onClick = {
-                    viewModel.openNavAppLocationHome()
+                    viewModel.openNavAppLocationHome(context)
                 },
                 enabled = isEnabled
             ) {
@@ -74,7 +76,7 @@ fun ActionButtons(
             ElevatedButton(
                 modifier = Modifier.padding(top = 16.dp),
                 onClick = {
-                    viewModel.openNavAppLocationHome()
+                    viewModel.openNavAppLocationHome(context)
                 },
                 enabled = isEnabled
             ) {
@@ -84,7 +86,7 @@ fun ActionButtons(
         ElevatedButton(
             modifier = Modifier.padding(top = 96.dp),
             onClick = {
-                viewModel.openNavApp()
+                viewModel.openNavApp(context)
             },
             enabled = isEnabled
         ) {

@@ -22,6 +22,8 @@ class ButtonService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + serviceJob)
 
     companion object {
+        private const val SHOW_BUTTON = "SHOW_BUTTON"
+
         private var _serviceStarted = MutableStateFlow(false)
         val serviceStarted: StateFlow<Boolean>
             get() = _serviceStarted.asStateFlow()
@@ -31,6 +33,19 @@ class ButtonService : Service() {
             context.startService(intent)
         }
 
+        fun showButton(context: Context) {
+            val intent = Intent(context, ButtonService::class.java).apply {
+                putExtra(SHOW_BUTTON, true)
+            }
+            context.startService(intent)
+        }
+
+        fun hideButton(context: Context) {
+            val intent = Intent(context, ButtonService::class.java).apply {
+                putExtra(SHOW_BUTTON, false)
+            }
+            context.startService(intent)
+        }
     }
 
     @Inject
@@ -39,8 +54,6 @@ class ButtonService : Service() {
     override fun onCreate() {
         super.onCreate()
         _serviceStarted.update { true }
-        serviceOverlay.show()
-
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -55,6 +68,14 @@ class ButtonService : Service() {
                     }
                     startActivity(intent)
                 }
+            }
+        }
+        if (intent != null) {
+            val isShowButton = intent.getBooleanExtra(SHOW_BUTTON, false)
+            if (isShowButton) {
+                serviceOverlay.show()
+            } else {
+                serviceOverlay.hide()
             }
         }
         return START_STICKY

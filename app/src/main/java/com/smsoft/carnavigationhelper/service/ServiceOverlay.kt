@@ -67,6 +67,14 @@ class ServiceOverlay @Inject constructor(
         }
     }
 
+    fun hide() {
+        floatingWindow?.let { window ->
+            if (window.isShowing.value) {
+                window.hide()
+            }
+        }
+    }
+
     fun close() {
         floatingWindow?.let { window ->
             window.hide()

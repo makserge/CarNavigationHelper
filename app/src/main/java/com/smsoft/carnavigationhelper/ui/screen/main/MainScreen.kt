@@ -58,8 +58,8 @@ fun MainScreen(
             val locationPermission = viewModel.checkLocationPermission(context)
             if (locationPermission) {
                 ButtonService.start(context)
-
-                viewModel.getCurrentLocationType(
+                
+                viewModel.startNavigationForLocation(
                     fusedLocationClient
                 )
 

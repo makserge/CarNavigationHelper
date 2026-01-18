@@ -21,6 +21,7 @@ import com.smsoft.carnavigationhelper.data.LocationType
 import com.smsoft.carnavigationhelper.data.NavType
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_COUNTDOWN_TIMER_DELAY
+import com.smsoft.carnavigationhelper.service.ButtonService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -60,7 +61,8 @@ class MainViewModel @Inject constructor(
 
     private var countDownTimer: CountDownTimer? = null
 
-    private fun openNavAppLocation(location: GeoPoint) {
+    private fun openNavAppLocation(context: Context, location: GeoPoint) {
+        ButtonService.showButton(context)
         cancelCountDownTimer()
         launchPlayer()
 
@@ -85,7 +87,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun openNavApp() {
+    fun openNavApp(context: Context) {
+        ButtonService.showButton(context)
         cancelCountDownTimer()
         coroutineScope.launch {
             val type = navType.first()
@@ -126,7 +129,10 @@ class MainViewModel @Inject constructor(
 
     fun closeApp(activity: Activity?) {
         cancelCountDownTimer()
-        activity?.finish()
+        activity?.let {
+            it.finish()
+            ButtonService.showButton(it.applicationContext)
+        }
     }
 
     fun checkLocationPermission(context: Context): Boolean {
@@ -134,7 +140,7 @@ class MainViewModel @Inject constructor(
     }
 
     @SuppressLint("MissingPermission")
-    fun getCurrentLocationType(
+    fun startNavigationForLocation(
         fusedLocationClient: FusedLocationProviderClient
     ) {
         val request = CurrentLocationRequest.Builder()
@@ -195,8 +201,8 @@ class MainViewModel @Inject constructor(
 
                 override fun onFinish() {
                     when (locationType.value) {
-                        LocationType.WORK -> openNavAppLocationWork()
-                        LocationType.HOME -> openNavAppLocationHome()
+                        LocationType.WORK -> openNavAppLocationWork(context)
+                        LocationType.HOME -> openNavAppLocationHome(context)
                         else -> {}
                     }
                 }
@@ -212,15 +218,15 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun openNavAppLocationWork() {
+    fun openNavAppLocationWork(context: Context) {
         coroutineScope.launch {
-            openNavAppLocation(workPosition.first())
+            openNavAppLocation(context, workPosition.first())
         }
     }
 
-    fun openNavAppLocationHome() {
+    fun openNavAppLocationHome(context: Context) {
         coroutineScope.launch {
-            openNavAppLocation(homePosition.first())
+            openNavAppLocation(context, homePosition.first())
         }
     }
 }
@@ -229,4 +235,4 @@ const val IGO_PACKAGE_NAME = "iGO.Israel"
 const val AIMP_PACKAGE_NAME = "com.aimp.player"
 const val AIMP_ACTIVITY_NAME = "com.aimp.player.ui.activities.main.MainActivity"
 const val LOCATION_RADIUS = 0.01
-const val NAV_START_DELAY = 5000L // 5s
+const val NAV_START_DELAY = 10000L // 5s
