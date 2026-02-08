@@ -2,7 +2,7 @@ package com.smsoft.carnavigationhelper.data
 
 import com.smsoft.carnavigationhelper.R
 
-enum class NavType(val resId: Int) {
+enum class NavType(override val resId: Int) : NamedOption {
     WAZE(R.string.nav_type_waze),
     IGO(R.string.nav_type_igo);
 

@@ -26,4 +26,17 @@
     <string name="nav_type_waze">Waze</string>
     <string name="nav_type_igo">iGO</string>
     <string name="nav_type">Navigation type</string>
+    <string name="player_type">Player type</string>
+    <string name="player_type_internal">Internal</string>
+    <string name="player_type_aimp">AIMP</string>
+    <string name="player">Player</string>
+    <string name="loading">Loading…</string>
+    <string name="player_playlist_path">Player playlist path</string>
+    <string name="message_permission_to_read_media_files">…to scan all music files the app needs permissions to read media files</string>
+    <string name="no_player_items">No items</string>
+    <string name="rescan_audio_files">Rescan audio files</string>
+    <string name="player_playlist">Player playlist</string>
+    <string name="gb">%.2f Gb</string>
+    <string name="update_content">Update content</string>
+    <string name="updating">Updating…</string>
 </resources>

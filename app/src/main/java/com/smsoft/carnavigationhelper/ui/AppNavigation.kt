@@ -11,8 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
+import com.smsoft.carnavigationhelper.data.Main
+import com.smsoft.carnavigationhelper.data.Player
 import com.smsoft.carnavigationhelper.data.Screen
 import com.smsoft.carnavigationhelper.ui.screen.main.MainScreen
+import com.smsoft.carnavigationhelper.ui.screen.player.PlayerScreen
 import com.smsoft.carnavigationhelper.ui.screen.settings.SettingsScreen
 import com.smsoft.carnavigationhelper.ui.theme.CarNavigationHelperTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -20,11 +24,36 @@ import dagger.hilt.android.AndroidEntryPoint
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = Screen.Main.route) {
-        composable(Screen.Main.route) {
+    NavHost(navController = navController, startDestination = Main()) {
+        composable<Main> { backStackEntry ->
+            val args = backStackEntry.toRoute<Main>()
             MainScreen(
-                onSettingsClick = {
+                isForceNavigation = args.isForceNavigation,
+                onPlayAction = {
+                    navController.navigate(Player(isForceNavigation = true))
+                },
+                onPlayerAction = {
+                    navController.navigate(Player(isForceNavigation = false))
+                },
+                onSettingsAction = {
                     navController.navigate(Screen.Settings.route)
+                },
+            )
+        }
+
+        composable<Player> { backStackEntry ->
+            val args = backStackEntry.toRoute<Main>()
+            PlayerScreen(
+                onBack = {
+                    navController.navigate(Main(isForceNavigation = true))
+                },
+                onSettingsAction = {
+                    navController.navigate(Screen.Settings.route)
+                },
+                onPlay = {
+                    if (args.isForceNavigation) {
+                        navController.navigate(Main(isForceNavigation = true))
+                    }
                 },
             )
         }

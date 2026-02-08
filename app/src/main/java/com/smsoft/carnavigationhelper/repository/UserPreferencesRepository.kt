@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smsoft.carnavigationhelper.data.GeoPoint
 import com.smsoft.carnavigationhelper.data.NavType
+import com.smsoft.carnavigationhelper.data.PlayerType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -23,13 +24,16 @@ class UserPreferencesRepository @Inject constructor(
         private val BUTTON_POSITION_X = intPreferencesKey("button_position_x")
         private val BUTTON_POSITION_Y = intPreferencesKey("button_position_y")
 
-        const val DEFAULT_HOME_POSITION_LAT = 0.0
-        const val DEFAULT_HOME_POSITION_LONG = 0.0
+        const val DEFAULT_PLAYER_PLAYLIST_PATH = "/sdcard/Music/new/"
+        val PLAYER_PLAYLIST_PATH = stringPreferencesKey("player_playlist_path")
+
+        const val DEFAULT_HOME_POSITION_LAT = 49.309757
+        const val DEFAULT_HOME_POSITION_LONG = 12.077504
         val HOME_POSITION_LAT = doublePreferencesKey("home_position_lat")
         val HOME_POSITION_LONG = doublePreferencesKey("home_position_long")
 
-        const val DEFAULT_WORK_POSITION_LAT = 0.0
-        const val DEFAULT_WORK_POSITION_LONG = 0.0
+        const val DEFAULT_WORK_POSITION_LAT = 49.418024
+        const val DEFAULT_WORK_POSITION_LONG = 11.646501
         val WORK_POSITION_LAT = doublePreferencesKey("work_position_lat")
         val WORK_POSITION_LONG = doublePreferencesKey("work_position_long")
 
@@ -38,6 +42,9 @@ class UserPreferencesRepository @Inject constructor(
 
         val DEFAULT_NAV_TYPE = NavType.WAZE.name
         val NAV_TYPE = stringPreferencesKey("nav_type")
+
+        val DEFAULT_PLAYER_TYPE = PlayerType.INTERNAL.name
+        val PLAYER_TYPE = stringPreferencesKey("player_type")
     }
 
     val buttonPositionFlow: Flow<Pair<Int, Int>> = dataStore
@@ -46,6 +53,12 @@ class UserPreferencesRepository @Inject constructor(
             val x = preferences[BUTTON_POSITION_X] ?: DEFAULT_BUTTON_POSITION_X
             val y = preferences[BUTTON_POSITION_Y] ?: DEFAULT_BUTTON_POSITION_Y
             Pair(x, y)
+        }
+
+    val playerPlaylistPathFlow: Flow<String> = dataStore
+        .data
+        .map { preferences ->
+            preferences[PLAYER_PLAYLIST_PATH] ?: DEFAULT_PLAYER_PLAYLIST_PATH
         }
 
     val homePositionFlow: Flow<GeoPoint> = dataStore
@@ -76,6 +89,12 @@ class UserPreferencesRepository @Inject constructor(
             preferences[NAV_TYPE] ?: DEFAULT_NAV_TYPE
         }
 
+    val playerTypeFlow: Flow<String> = dataStore
+        .data
+        .map { preferences ->
+            preferences[PLAYER_TYPE] ?: DEFAULT_PLAYER_TYPE
+        }
+
     suspend fun setButtonPosition(x: Int, y: Int) {
         dataStore.edit { preferences ->
             preferences[BUTTON_POSITION_X] = x
@@ -103,6 +122,12 @@ class UserPreferencesRepository @Inject constructor(
                 }
                 NAV_TYPE -> {
                     preferences[NAV_TYPE] = value
+                }
+                PLAYER_TYPE -> {
+                    preferences[PLAYER_TYPE] = value
+                }
+                PLAYER_PLAYLIST_PATH -> {
+                    preferences[PLAYER_PLAYLIST_PATH] = value
                 }
             }
         }

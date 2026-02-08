@@ -1,8 +1,5 @@
 package com.smsoft.carnavigationhelper.ui.composable
 
-import android.Manifest
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -14,15 +11,11 @@ import androidx.compose.ui.res.stringResource
 import com.smsoft.carnavigationhelper.R
 
 @Composable
-fun DialogLocationPermission(
+fun DialogPermission(
+    message: String,
+    onConfirm: () -> Unit = { },
     onDismiss: () -> Unit = { },
 ) {
-    val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { _ ->
-        onDismiss()
-    }
-
     AlertDialog(
         icon = {
             Icon(
@@ -34,27 +27,21 @@ fun DialogLocationPermission(
             Text(text = stringResource(id = R.string.permission_required))
         },
         text = {
-            Text(text = stringResource(R.string.message_permission_to_get_location))
+            Text(text = message)
         },
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(
-                onClick = {
-                    launcher.launch(arrayOf(
-                        Manifest.permission.ACCESS_FINE_LOCATION,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ))
-                },
+                onClick = onConfirm,
             ) {
                 Text(stringResource(R.string.grant_permission))
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = onDismiss
-            ) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(android.R.string.cancel))
             }
         },
     )
 }
+

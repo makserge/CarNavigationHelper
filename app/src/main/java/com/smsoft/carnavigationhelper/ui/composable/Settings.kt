@@ -1,6 +1,7 @@
 package com.smsoft.carnavigationhelper.ui.composable
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -12,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -19,16 +21,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smsoft.carnavigationhelper.R
 import com.smsoft.carnavigationhelper.data.GeoPoint
 import com.smsoft.carnavigationhelper.data.NavType
+import com.smsoft.carnavigationhelper.data.PlayerType
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.COUNTDOWN_TIMER_DELAY
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_COUNTDOWN_TIMER_DELAY
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_HOME_POSITION_LAT
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_HOME_POSITION_LONG
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_NAV_TYPE
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_PLAYER_PLAYLIST_PATH
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_PLAYER_TYPE
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_WORK_POSITION_LAT
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_WORK_POSITION_LONG
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.HOME_POSITION_LAT
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.HOME_POSITION_LONG
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.NAV_TYPE
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.PLAYER_PLAYLIST_PATH
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.PLAYER_TYPE
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.WORK_POSITION_LAT
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.WORK_POSITION_LONG
 import com.smsoft.carnavigationhelper.ui.screen.settings.SettingsViewModel
@@ -41,6 +48,9 @@ fun Settings(
 ) {
     val scope = rememberCoroutineScope()
 
+    val playerPlaylistPath by viewModel.playerPlaylistPath.collectAsStateWithLifecycle(
+        initialValue = DEFAULT_PLAYER_PLAYLIST_PATH
+    )
     val homePosition by viewModel.homePosition.collectAsStateWithLifecycle(
         initialValue = GeoPoint(DEFAULT_HOME_POSITION_LAT, DEFAULT_HOME_POSITION_LONG)
     )
@@ -53,7 +63,13 @@ fun Settings(
     val navType by viewModel.navType.collectAsStateWithLifecycle(
         initialValue = DEFAULT_NAV_TYPE
     )
+    val playerType by viewModel.playerType.collectAsStateWithLifecycle(
+        initialValue = DEFAULT_PLAYER_TYPE
+    )
+
     val fields = listOf(
+        Triple(stringResource(R.string.player_playlist_path),
+            playerPlaylistPath, PLAYER_PLAYLIST_PATH),
         Triple(stringResource(R.string.home_lat), homePosition.latitude.toString(), HOME_POSITION_LAT),
         Triple(stringResource(R.string.home_long), homePosition.longitude.toString(), HOME_POSITION_LONG),
         Triple(stringResource(R.string.work_lat), workPosition.latitude.toString(), WORK_POSITION_LAT),
@@ -68,14 +84,30 @@ fun Settings(
             .padding(start = 16.dp)
     ) {
         Text(
-            text = stringResource(R.string.nav_type),
             modifier = Modifier.padding(vertical = 16.dp),
+            text = stringResource(R.string.nav_type),
         )
-        EnumRadioButtonGroup(
+        RadioButtonGroup(
+            modifier,
+            options = NavType.entries.toTypedArray(),
             value = NavType.fromName(navType),
             onOptionSelected = { value ->
                 scope.launch {
                     viewModel.updateField(NAV_TYPE, value.name)
+                }
+            },
+        )
+        Text(
+            text = stringResource(R.string.player_type),
+            modifier = Modifier.padding(vertical = 16.dp),
+        )
+        RadioButtonGroup(
+            modifier,
+            options = PlayerType.entries.toTypedArray(),
+            value = PlayerType.fromName(playerType),
+            onOptionSelected = { value ->
+                scope.launch {
+                    viewModel.updateField(PLAYER_TYPE, value.name)
                 }
             },
         )
@@ -88,6 +120,10 @@ fun Settings(
                 }
             },
             label = { Text(stringResource(R.string.countdown_timer)) }
+        )
+        UpdatePlayerContent(
+            modifier,
+            viewModel
         )
         fields.forEach { (label, value, key) ->
             OutlinedTextField(

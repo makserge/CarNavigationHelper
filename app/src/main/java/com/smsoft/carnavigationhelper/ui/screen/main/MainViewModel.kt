@@ -19,13 +19,13 @@ import com.smsoft.carnavigationhelper.R
 import com.smsoft.carnavigationhelper.data.GeoPoint
 import com.smsoft.carnavigationhelper.data.LocationType
 import com.smsoft.carnavigationhelper.data.NavType
+import com.smsoft.carnavigationhelper.data.PlayerType
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_COUNTDOWN_TIMER_DELAY
 import com.smsoft.carnavigationhelper.service.ButtonService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,6 +50,9 @@ class MainViewModel @Inject constructor(
     private val navType: Flow<String>
         get() = userPreferencesRepository.navTypeFlow
 
+    private val playerType: Flow<String>
+        get() = userPreferencesRepository.playerTypeFlow
+
     private val locationTypePrivate = MutableStateFlow(LocationType.UNKNOWN)
     val locationType = locationTypePrivate.asStateFlow()
 
@@ -61,16 +64,19 @@ class MainViewModel @Inject constructor(
 
     private var countDownTimer: CountDownTimer? = null
 
-    private fun openNavAppLocation(context: Context, location: GeoPoint) {
-        ButtonService.showButton(context)
+    private fun openNavAppLocation(
+        context: Context,
+        location: GeoPoint
+    ) {
         cancelCountDownTimer()
-        launchPlayer()
+        ButtonService.showButton(context)
+        launchNavigationApp(location)
+    }
 
+    private fun launchNavigationApp(location: GeoPoint) {
         coroutineScope.launch {
-            delay(NAV_START_DELAY)
-
-            val type = navType.first()
             var intent: Intent
+            val type = navType.first()
             if (type == NavType.IGO.name) {
                 val navUri = "geo:" + location.latitude + "," + location.longitude + "?q=" + location.latitude + "," + location.longitude
                 intent = Intent(Intent.ACTION_VIEW, navUri.toUri()).apply {
@@ -172,17 +178,25 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    private fun launchPlayer() {
-        val intent = Intent().apply {
-            component = ComponentName(AIMP_PACKAGE_NAME, AIMP_ACTIVITY_NAME)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        try {
-            context.startActivity(intent)
-        } catch (_: ActivityNotFoundException) {
-            Toast(context).apply {
-                setText(R.string.player_app_not_found)
-                show()
+    fun launchPlayer(onPlay: () -> Unit) {
+        coroutineScope.launch {
+            val type = playerType.first()
+            if (type == PlayerType.INTERNAL.name) {
+                onPlay()
+            } else {
+                val intent = Intent().apply {
+                    component = ComponentName(AIMP_PACKAGE_NAME, AIMP_ACTIVITY_NAME)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                try {
+                    context.startActivity(intent)
+                    onPlay()
+                } catch (_: ActivityNotFoundException) {
+                    Toast(context).apply {
+                        setText(R.string.player_app_not_found)
+                        show()
+                    }
+                }
             }
         }
     }
@@ -235,4 +249,3 @@ const val IGO_PACKAGE_NAME = "iGO.Israel"
 const val AIMP_PACKAGE_NAME = "com.aimp.player"
 const val AIMP_ACTIVITY_NAME = "com.aimp.player.ui.activities.main.MainActivity"
 const val LOCATION_RADIUS = 0.01
-const val NAV_START_DELAY = 10000L // 5s
