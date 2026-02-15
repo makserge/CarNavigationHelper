@@ -10,7 +10,7 @@ import com.smsoft.carnavigationhelper.data.database.dao.PlayerPlaylistDao
     entities = [
         Song::class
     ],
-    exportSchema = true
+    exportSchema = false
 )
 
 abstract class CarNavigationHelperDatabase: RoomDatabase() {

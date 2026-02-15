@@ -9,13 +9,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.smsoft.carnavigationhelper.data.database.entity.Song
+import com.smsoft.carnavigationhelper.ui.theme.TurquoiseGreen
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Item(
+fun PlaylistItem(
     item: Song,
     isSelected: Boolean,
     modifier: Modifier = Modifier
@@ -26,13 +29,23 @@ fun Item(
             .padding(24.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        val (fontWeight, color) = if (isSelected) {
+            FontWeight.Bold to TurquoiseGreen
+        } else {
+            FontWeight.Normal to Color.Unspecified // Use the default color from the style
+        }
+
         Text(
+            modifier = Modifier.weight(1f),
             text = formatTitle(item),
-            modifier = Modifier.weight(1f)
+            fontWeight = fontWeight,
+            color = color
         )
         Text(
             text = formatTime(item.duration),
-            style = MaterialTheme.typography.bodyMedium
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = fontWeight,
+            color = color
         )
     }
 }

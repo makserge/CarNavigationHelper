@@ -17,6 +17,7 @@ import com.smsoft.carnavigationhelper.data.Player
 import com.smsoft.carnavigationhelper.data.Screen
 import com.smsoft.carnavigationhelper.ui.screen.main.MainScreen
 import com.smsoft.carnavigationhelper.ui.screen.player.PlayerScreen
+import com.smsoft.carnavigationhelper.ui.screen.player_settings.PlayerSettingsScreen
 import com.smsoft.carnavigationhelper.ui.screen.settings.SettingsScreen
 import com.smsoft.carnavigationhelper.ui.theme.CarNavigationHelperTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -48,7 +49,7 @@ fun AppNavigation() {
                     navController.navigate(Main(isForceNavigation = true))
                 },
                 onSettingsAction = {
-                    navController.navigate(Screen.Settings.route)
+                    navController.navigate(Screen.PlayerSettings.route)
                 },
                 onPlay = {
                     if (args.isForceNavigation) {
@@ -60,6 +61,12 @@ fun AppNavigation() {
 
         composable(Screen.Settings.route) {
             SettingsScreen {
+                navController.navigateUp()
+            }
+        }
+
+        composable(Screen.PlayerSettings.route) {
+            PlayerSettingsScreen {
                 navController.navigateUp()
             }
         }

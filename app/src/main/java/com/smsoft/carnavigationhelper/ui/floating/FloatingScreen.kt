@@ -17,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.github.only52607.compose.service.dragServiceFloatingWindow
 import com.smsoft.carnavigationhelper.R
 import com.smsoft.carnavigationhelper.ui.theme.CarNavigationHelperTheme
+import com.smsoft.carnavigationhelper.ui.theme.TurquoiseGreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -42,7 +43,7 @@ fun FloatingScreen(
             Icon(
                 imageVector = Icons.Default.DirectionsCar,
                 contentDescription = stringResource(R.string.open_home),
-                tint = Color(0xFF30D5C8),
+                tint = TurquoiseGreen,
                 modifier = Modifier
                     .background(Color.DarkGray)
                     .padding(16.dp)

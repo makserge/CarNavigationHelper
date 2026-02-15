@@ -1,17 +1,15 @@
 package com.smsoft.carnavigationhelper.ui.composable
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import com.smsoft.carnavigationhelper.data.database.entity.Song
 
 @Composable
-fun ItemsList(
+fun PlayerPlaylistItemsList(
     modifier: Modifier = Modifier,
     padding: PaddingValues,
     items: List<Song>,
@@ -22,7 +20,7 @@ fun ItemsList(
     LaunchedEffect(selectedItemId) {
         val index = items.indexOfFirst { it.id == selectedItemId }
         if (index >= 0) {
-            listState.animateScrollToItem(index)
+            listState.scrollToItem(index)
         }
     }
 
@@ -33,12 +31,10 @@ fun ItemsList(
     ) {
         items(items.size, key = { items[it].id }) { index ->
             val isSelected = items[index].id == selectedItemId
-            Item(
+            PlaylistItem(
+                modifier = Modifier,
                 item = items[index],
-                isSelected = isSelected,
-                modifier = Modifier.background(
-                    if (isSelected) Color.LightGray else Color.Transparent
-                )
+                isSelected = isSelected
             )
         }
     }

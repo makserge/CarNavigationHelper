@@ -24,7 +24,7 @@ class UserPreferencesRepository @Inject constructor(
         private val BUTTON_POSITION_X = intPreferencesKey("button_position_x")
         private val BUTTON_POSITION_Y = intPreferencesKey("button_position_y")
 
-        const val DEFAULT_PLAYER_PLAYLIST_PATH = "/sdcard/Music/new/"
+        const val DEFAULT_PLAYER_PLAYLIST_PATH = "content://com.android.externalstorage.documents/tree/primary:Music"
         val PLAYER_PLAYLIST_PATH = stringPreferencesKey("player_playlist_path")
 
         const val DEFAULT_HOME_POSITION_LAT = 49.309757

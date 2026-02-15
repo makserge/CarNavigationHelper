@@ -8,7 +8,7 @@ import com.smsoft.carnavigationhelper.data.database.entity.Song.Companion.TABLE_
 
 @Entity(tableName = TABLE_NAME)
 data class Song(
-    @PrimaryKey(autoGenerate = true) val id: Long,
+    @PrimaryKey val id: Long,
     val fileName: String,
     val artist: String? = null,
     val title: String? = null,

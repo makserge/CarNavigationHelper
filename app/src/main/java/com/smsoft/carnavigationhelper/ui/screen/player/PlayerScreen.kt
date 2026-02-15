@@ -1,5 +1,8 @@
 package com.smsoft.carnavigationhelper.ui.screen.player
 
+import android.annotation.SuppressLint
+import android.content.Intent
+import android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -25,11 +28,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.smsoft.carnavigationhelper.R
 import com.smsoft.carnavigationhelper.ui.composable.DialogPermission
 import com.smsoft.carnavigationhelper.ui.composable.Player
 
+@SuppressLint("InlinedApi")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
@@ -40,14 +45,13 @@ fun PlayerScreen(
     val viewModel: PlayerViewModel = hiltViewModel()
 
     val context = LocalContext.current
-    var showDialogMediaPermission by rememberSaveable { mutableStateOf(false) }
+    var showAllFilesPermission by rememberSaveable { mutableStateOf(false) }
     var isPlayerEnabled by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        val mediaPermission = viewModel.checkMediaPermission(context)
-        if (mediaPermission) {
+        if (viewModel.checkAllFilesPermission()) {
             isPlayerEnabled = true
         } else {
-            showDialogMediaPermission = true
+            showAllFilesPermission = true
         }
     }
 
@@ -100,22 +104,25 @@ fun PlayerScreen(
             }
         }
     }
-    if (showDialogMediaPermission) {
+    if (showAllFilesPermission) {
+        val context = LocalContext.current
         val launcher = rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission()
+            contract = ActivityResultContracts.StartActivityForResult()
         ) { _ ->
-            val mediaPermission = viewModel.checkMediaPermission(context)
-            if (mediaPermission) {
+            if (viewModel.checkAllFilesPermission()) {
                 isPlayerEnabled = true
             } else {
                 onBack()
             }
-            showDialogMediaPermission = false
+            showAllFilesPermission = false
         }
         DialogPermission(
-            stringResource(R.string.message_permission_to_read_media_files),
+            stringResource(R.string.message_permission_to_read_all_files),
             onConfirm = {
-                launcher.launch(viewModel.getMediaPermission())
+                val intent = Intent(ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                    data = "package:${context.packageName}".toUri()
+                }
+                launcher.launch(intent)
             },
             onDismiss = {
                 onBack()

@@ -4,7 +4,6 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -184,19 +183,24 @@ class MainViewModel @Inject constructor(
             if (type == PlayerType.INTERNAL.name) {
                 onPlay()
             } else {
+                /*
                 val intent = Intent().apply {
                     component = ComponentName(AIMP_PACKAGE_NAME, AIMP_ACTIVITY_NAME)
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }
                 try {
                     context.startActivity(intent)
+
+                 */
                     onPlay()
+                /*
                 } catch (_: ActivityNotFoundException) {
                     Toast(context).apply {
                         setText(R.string.player_app_not_found)
                         show()
                     }
                 }
+                 */
             }
         }
     }

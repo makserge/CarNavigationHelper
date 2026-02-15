@@ -1,11 +1,11 @@
 package com.smsoft.carnavigationhelper.ui.screen.player
 
-import android.Manifest
 import android.content.ComponentName
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Environment
 import android.text.Html
+import androidx.annotation.OptIn
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -14,11 +14,11 @@ import androidx.lifecycle.ViewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.MoreExecutors
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
-import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import com.smsoft.carnavigationhelper.service.AudioPlaybackService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -32,37 +32,34 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.ExecutionException
 import javax.inject.Inject
+import kotlin.random.Random
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
-    private val playerRepository: PlayerRepository
+    @param:ApplicationContext private val context: Context,
+    playerRepository: PlayerRepository
 ) : ViewModel() {
     private val coroutineScope= CoroutineScope(Dispatchers.IO)
 
     private val uiStateInt = MutableStateFlow<UIState>(UIState.Initial)
     val uiState = uiStateInt.asStateFlow()
 
-    var currentMediaId = mutableStateOf("")
-    var metaTitle = mutableStateOf("")
-    var duration = mutableLongStateOf(0L)
-    var progress = mutableFloatStateOf(0F)
-    var currentPosition = mutableLongStateOf(0L)
+    var trackCurrentMediaId = mutableLongStateOf(0L)
+    var trackTitle = mutableStateOf("")
+    var trackDuration = mutableLongStateOf(0L)
+    var trackProgress = mutableFloatStateOf(0F)
+    var trackCurrentPosition = mutableLongStateOf(0L)
 
     val playerPlaylist = playerRepository.getAll
 
     private var job: Job? = null
 
-    fun getMediaPermission(): String {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            Manifest.permission.READ_MEDIA_AUDIO
+    fun checkAllFilesPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
         } else {
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            true
         }
-    }
-
-    fun checkMediaPermission(context: Context): Boolean {
-        return context.checkSelfPermission(getMediaPermission()) == PackageManager.PERMISSION_GRANTED
     }
 
     fun onStart(callback: (player: Player) -> Unit) {
@@ -84,19 +81,24 @@ class PlayerViewModel @Inject constructor(
                     .build()
                 mediaItems.add(mediaItem)
             }
+            mediaItems.shuffle(Random(System.currentTimeMillis()))
             setupPlayer(mediaItems, callback)
         }
     }
 
+    @OptIn(UnstableApi::class)
     private fun setupPlayer(items: List<MediaItem>, callback: (player: Player) -> Unit) {
         var player: Player? = null
         val playerListener = object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                currentMediaId.value = mediaItem?.mediaId.toString()
+                if ((mediaItem != null) && (mediaItem.mediaId != null) && (mediaItem.mediaId.isNotEmpty())) {
+                    trackCurrentMediaId.longValue = mediaItem.mediaId.toLong()
+                }
             }
+
             override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-                duration.longValue = if (mediaMetadata.durationMs != null) mediaMetadata.durationMs!! else 0
-                metaTitle.value = convertCharset(mediaMetadata)
+                trackDuration.longValue = if (mediaMetadata.durationMs != null) mediaMetadata.durationMs!! else 0
+                trackTitle.value = convertCharset(mediaMetadata)
             }
 
             override fun onPlaybackStateChanged(state: Int) {
@@ -110,6 +112,7 @@ class PlayerViewModel @Inject constructor(
                         uiStateInt.value = UIState.Ready
                     }
                     Player.STATE_IDLE -> {
+                        uiStateInt.value = UIState.Ready
                     }
                 }
             }
@@ -119,8 +122,8 @@ class PlayerViewModel @Inject constructor(
                     job = coroutineScope.launch(Dispatchers.Main) {
                         while (true) {
                             player?.let {
-                                progress.floatValue = if (it.currentPosition > 0) (it.currentPosition.toFloat() / it.duration).toFloat() else 0F
-                                currentPosition.longValue = it.currentPosition
+                                trackProgress.floatValue = if (it.currentPosition > 0) (it.currentPosition.toFloat() / it.duration) else 0F
+                                trackCurrentPosition.longValue = it.currentPosition
                             }
                             delay(500)
                         }
@@ -135,8 +138,6 @@ class PlayerViewModel @Inject constructor(
                 player = controllerFuture.get()
                 player.addListener(playerListener)
                 player.setMediaItems(items)
-                player.setShuffleModeEnabled(true)
-                player.volume = 1f
                 player.prepare()
                 player.playWhenReady = true
                 callback(player)
@@ -146,14 +147,11 @@ class PlayerViewModel @Inject constructor(
     }
 
     private fun convertCharset(metaData: MediaMetadata): String {
-        var value = ""
-        if ((metaData.artist != null) && (metaData.artist!!.isNotEmpty()) && (metaData.title != null) && (metaData.title!!.isNotEmpty())) {
-            value = metaData.artist!!.toString() + " - " + metaData.title!!
+        var value: CharSequence = metaData.displayTitle ?: ""
+        if (!metaData.artist.isNullOrEmpty() && !metaData.title.isNullOrEmpty()) {
+            value = "${metaData.artist} - ${metaData.title}"
         }
-        if (value.isNotEmpty()) {
-            return Html.fromHtml(value, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
-        }
-        return value
+        return Html.fromHtml(value.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
     }
 
     private fun stopProgressUpdate() {

@@ -1,18 +1,9 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.dagger.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget = JvmTarget.fromTarget("21")
-    }
 }
 
 android {
@@ -62,7 +53,6 @@ dependencies {
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.datastore.core)
     implementation(libs.androidx.datastore.preferences)
-    implementation(project(":library"))
     implementation(libs.androidx.navigation.compose)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.compose.foundation)
@@ -70,9 +60,11 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.media3.ui.compose.material3)
-    implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.session)
-    implementation(libs.compose.material3)
+
+    implementation(project(":library"))
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))
+        
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)

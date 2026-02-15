@@ -1,8 +1,13 @@
 package com.smsoft.carnavigationhelper.module
 
 import android.content.Context
+import android.os.Looper
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.session.MediaSession
 import com.smsoft.carnavigationhelper.data.database.CarNavigationHelperDatabase
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
+import com.un4seen.bass.BassPlayer
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -13,32 +18,27 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 class PlayerModule {
-    /*
     @Provides
     @Singleton
-    fun provideNotificationManager(
-        @ApplicationContext context: Context,
-        //player: ExoPlayer
-    ): PlayerNotificationManager = PlayerNotificationManager(
-        context = context,
-        //player = player
-    )
+    fun provideMainLooper(): Looper = Looper.getMainLooper()
 
+    @OptIn(UnstableApi::class)
+    @Provides
+    @Singleton
+    fun providePlayer(
+        @ApplicationContext context: Context,
+        looper: Looper
+    ): BassPlayer = BassPlayer(context, looper)
+
+    @OptIn(UnstableApi::class)
     @Provides
     @Singleton
     fun provideMediaSession(
         @ApplicationContext context: Context,
-        //player: ExoPlayer
+        player: BassPlayer
     ): MediaSession = MediaSession.Builder(context, player).build()
 
     @Provides
-    @Singleton
-    fun provideServiceHandler(
-        //player: ExoPlayer
-    ): RadioMediaServiceHandler = RadioMediaServiceHandler(
-        //player = player
-    )
-*/
     @Singleton
     fun providesPlayerRepository(
         database: CarNavigationHelperDatabase,

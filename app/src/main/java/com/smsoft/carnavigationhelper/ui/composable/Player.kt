@@ -15,7 +15,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -32,7 +31,6 @@ fun Player(
     viewModel: PlayerViewModel,
     onPlaybackStarted: () -> Unit,
 ) {
-    val context = LocalContext.current
     val state = viewModel.uiState.collectAsStateWithLifecycle()
     val items = viewModel.playerPlaylist.collectAsStateWithLifecycle(
         initialValue = null
@@ -71,22 +69,22 @@ fun PlayerContainer(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = viewModel.metaTitle.value, style = MaterialTheme.typography.headlineMedium)
+        Text(text = viewModel.trackTitle.value, style = MaterialTheme.typography.headlineMedium)
 
         AudioPlayerProgress(
             modifier = Modifier,
-            progress = viewModel.progress.floatValue,
-            currentPosition = viewModel.currentPosition.longValue,
-            duration = viewModel.duration.longValue
+            progress = viewModel.trackProgress.floatValue,
+            currentPosition = viewModel.trackCurrentPosition.longValue,
+            duration = viewModel.trackDuration.longValue
         )
         AudioPlayerControls(player)
         if (items != null) {
             if (items.isNotEmpty()) {
-                ItemsList(
+                PlayerPlaylistItemsList(
                     modifier = Modifier,
                     padding = padding,
                     items = items,
-                    selectedItemId = viewModel.currentMediaId.value.toLong(),
+                    selectedItemId = viewModel.trackCurrentMediaId.longValue
                 )
             } else {
                 NoItems(

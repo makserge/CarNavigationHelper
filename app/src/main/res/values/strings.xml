@@ -31,12 +31,13 @@
     <string name="player_type_aimp">AIMP</string>
     <string name="player">Player</string>
     <string name="loading">Loading…</string>
-    <string name="player_playlist_path">Player playlist path</string>
-    <string name="message_permission_to_read_media_files">…to scan all music files the app needs permissions to read media files</string>
+    <string name="player_playlist_path">Playlist path</string>
+    <string name="message_permission_to_read_all_files">…to scan music files the app needs permissions to access to all files</string>
     <string name="no_player_items">No items</string>
     <string name="rescan_audio_files">Rescan audio files</string>
-    <string name="player_playlist">Player playlist</string>
+    <string name="current_playlist">Current playlist</string>
     <string name="gb">%.2f Gb</string>
     <string name="update_content">Update content</string>
     <string name="updating">Updating…</string>
+    <string name="pick_playlist_path">Pick playlist path</string>
 </resources>

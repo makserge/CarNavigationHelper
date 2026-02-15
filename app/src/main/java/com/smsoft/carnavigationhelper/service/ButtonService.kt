@@ -83,7 +83,6 @@ class ButtonService : Service() {
 
     override fun onDestroy() {
         _serviceStarted.update { false }
-        // Call close for cleanup and it will hide it in the process
         serviceOverlay.close()
         super.onDestroy()
     }

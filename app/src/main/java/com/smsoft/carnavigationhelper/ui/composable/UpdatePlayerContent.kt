@@ -14,44 +14,36 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.smsoft.carnavigationhelper.R
-import com.smsoft.carnavigationhelper.ui.screen.settings.SettingsViewModel
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun UpdatePlayerContent(
     modifier: Modifier,
-    viewModel: SettingsViewModel
+    isPlaylistUpdating: Boolean,
+    audioFilesCount: String,
+    audioFilesDuration: Long,
+    audioFilesSize: Long,
+    onClick: () -> Unit
 ) {
-    val context = LocalContext.current
     Column(
         modifier = modifier
     ) {
         Text(
-            modifier = Modifier
-                .padding(
-                    top = 16.dp,
-                    bottom = 8.dp
-                ),
-            text = stringResource(R.string.player_playlist),
+            modifier = Modifier.padding(bottom = 8.dp),
+            text = stringResource(R.string.current_playlist),
         )
         Text(
-            modifier = Modifier
-                .padding(
-                    top = 16.dp
-                ),
-            text = viewModel.audioFilesCount.intValue.toString() + " / " + formatDuration(viewModel.audioFilesDuration.longValue)  + " / " +
-                    stringResource(R.string.gb, (viewModel.audioFilesSize.longValue.toDouble() / (1024 * 1024 * 1024))),
+            modifier = Modifier.padding(top = 16.dp),
+            text = audioFilesCount + " / " + formatDuration(audioFilesDuration)  + " / " + stringResource(R.string.gb, (audioFilesSize.toDouble() / (1024 * 1024 * 1024))),
         )
         Row(
-            modifier = Modifier
-                .padding(bottom = 16.dp),
+            modifier = Modifier.padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (viewModel.isPlaylistUpdating.value) {
+            if (isPlaylistUpdating) {
                 Text(
                     modifier = Modifier
                         .padding(
@@ -74,7 +66,7 @@ fun UpdatePlayerContent(
                     modifier = Modifier
                         .clickable(
                             onClick = {
-                                viewModel.rescanAudioFiles(context)
+                                onClick()
                             }
                         ),
                     text = stringResource(R.string.update_content)
@@ -82,7 +74,7 @@ fun UpdatePlayerContent(
                 IconButton(
                     modifier = Modifier,
                     onClick = {
-                        viewModel.rescanAudioFiles(context)
+                        onClick()
                     }
                 ) {
                     Icon(
@@ -99,5 +91,5 @@ fun UpdatePlayerContent(
 private fun formatDuration(duration: Long): String {
     return duration.milliseconds.toComponents { hours, minutes, seconds, _ ->
         "%02d:%02d:%02d".format(hours, minutes, seconds)
-    }.toString()
+    }
 }
