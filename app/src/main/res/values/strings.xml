@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Car Navigation Helper</string>
     <string name="go_to_work_button">Go to work</string>
-    <string name="go_to_home_button">Go to home</string>
+    <string name="go_to_home_button">Go home</string>
     <string name="open_nav_button">Open navigation home</string>
     <string name="close_app_button">Close app</string>
     <string name="countdown_timer_text">Go to action: "%1$s" in %2$d seconds</string>

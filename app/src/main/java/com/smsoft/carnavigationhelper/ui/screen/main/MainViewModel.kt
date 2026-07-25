@@ -7,6 +7,10 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.CountDownTimer
 import android.widget.Toast
 import androidx.core.net.toUri
@@ -31,7 +35,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
+import kotlin.coroutines.resume
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
@@ -74,6 +81,7 @@ class MainViewModel @Inject constructor(
 
     private fun launchNavigationApp(location: GeoPoint) {
         coroutineScope.launch {
+            awaitNetworkAvailable()
             var intent: Intent
             val type = navType.first()
             if (type == NavType.IGO.name) {
@@ -119,6 +127,55 @@ class MainViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    private fun isNetworkAvailable(): Boolean {
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    /**
+     * Right after the car starts, the phone's mobile data connection may still be reconnecting.
+     * Waits until a validated internet connection is available (or [timeoutMs] elapses) before
+     * returning, so navigation isn't launched into a dead network.
+     */
+    private suspend fun awaitNetworkAvailable(timeoutMs: Long = NETWORK_WAIT_TIMEOUT_MS): Boolean {
+        if (isNetworkAvailable()) return true
+
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        return withTimeoutOrNull(timeoutMs) {
+            suspendCancellableCoroutine { continuation ->
+                val request = NetworkRequest.Builder()
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .addCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    .build()
+
+                val callback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        if (continuation.isActive) {
+                            connectivityManager.unregisterNetworkCallback(this)
+                            continuation.resume(true)
+                        }
+                    }
+                }
+
+                continuation.invokeOnCancellation {
+                    try {
+                        connectivityManager.unregisterNetworkCallback(callback)
+                    } catch (_: IllegalArgumentException) {
+                        // Already unregistered.
+                    }
+                }
+
+                connectivityManager.registerNetworkCallback(request, callback)
+            }
+        } ?: false
     }
 
     private fun startIntent(intent: Intent) {
@@ -253,3 +310,4 @@ const val IGO_PACKAGE_NAME = "iGO.Israel"
 const val AIMP_PACKAGE_NAME = "com.aimp.player"
 const val AIMP_ACTIVITY_NAME = "com.aimp.player.ui.activities.main.MainActivity"
 const val LOCATION_RADIUS = 0.01
+const val NETWORK_WAIT_TIMEOUT_MS = 15_000L
