@@ -23,6 +23,7 @@ fun ActionButtons(
     isEnabled: Boolean,
     locationType: LocationType,
     countdownTimer: Int,
+    waitingForInternet: Boolean,
     viewModel: MainViewModel
 ) {
     val activity = LocalActivity.current
@@ -32,7 +33,9 @@ fun ActionButtons(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (locationType != LocationType.UNKNOWN) {
+        if (waitingForInternet) {
+            Text(stringResource(R.string.waiting_for_internet))
+        } else if (locationType != LocationType.UNKNOWN) {
             Text(
                 stringResource(
                     R.string.countdown_timer_text,

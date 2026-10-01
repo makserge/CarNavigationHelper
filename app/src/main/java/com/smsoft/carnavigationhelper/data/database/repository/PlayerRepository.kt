@@ -25,10 +25,7 @@ class PlayerRepository@Inject constructor(
     ) {
         val songs = scanFiles(context, path, callback)
         if (songs.isNotEmpty()) {
-            this.run {
-                playerPlaylistDao.clear()
-                playerPlaylistDao.insertAll(songs)
-            }
+            playerPlaylistDao.replaceAll(songs)
         }
     }
 
@@ -125,7 +122,7 @@ class PlayerRepository@Inject constructor(
             }
 
             return Song(
-                id = uri.hashCode().toLong(),
+                id = 0,
                 fileName = fileName,
                 artist = artist,
                 title = title ?: fileName,

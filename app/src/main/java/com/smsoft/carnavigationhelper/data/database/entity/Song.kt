@@ -8,7 +8,8 @@ import com.smsoft.carnavigationhelper.data.database.entity.Song.Companion.TABLE_
 
 @Entity(tableName = TABLE_NAME)
 data class Song(
-    @PrimaryKey val id: Long,
+    // Generated on insert (pass 0), a hash of the uri could collide. Also used as the player's mediaId
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val fileName: String,
     val artist: String? = null,
     val title: String? = null,

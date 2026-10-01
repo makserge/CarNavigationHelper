@@ -39,15 +39,19 @@ fun PlayerSettingsScreen(
         contract = ActivityResultContracts.OpenDocumentTree(),
         onResult = { uri ->
             uri?.let {
-                context.contentResolver.takePersistableUriPermission(
-                    it,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION
-                )
-                CoroutineScope(Dispatchers.IO).launch {
-                    viewModel.updateField(
-                        UserPreferencesRepository.PLAYER_PLAYLIST_PATH,
-                        it.toString()
+                try {
+                    context.contentResolver.takePersistableUriPermission(
+                        it,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
                     )
+                    CoroutineScope(Dispatchers.IO).launch {
+                        viewModel.updateField(
+                            UserPreferencesRepository.PLAYER_PLAYLIST_PATH,
+                            it.toString()
+                        )
+                    }
+                } catch (_: SecurityException) {
+                    // Without a persisted grant the folder can not be read later, so the old one is kept
                 }
             }
         }

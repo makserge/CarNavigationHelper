@@ -2,7 +2,9 @@ package com.smsoft.carnavigationhelper.module
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.Module
 import dagger.Provides
@@ -18,7 +20,11 @@ import javax.inject.Singleton
 
 private const val DATASTORE_NAME = "user_prefs"
 
-val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = DATASTORE_NAME)
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(
+    name = DATASTORE_NAME,
+    // A corrupted prefs file is replaced with the defaults instead of crashing on every start
+    corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
+)
 
 @Module
 @InstallIn(SingletonComponent::class)

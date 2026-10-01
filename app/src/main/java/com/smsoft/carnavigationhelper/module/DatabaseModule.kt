@@ -23,6 +23,8 @@ object DatabaseModule {
         context,
         CarNavigationHelperDatabase::class.java,
         DATABASE)
+        // The playlist is only a scan result, so it is dropped on a schema change and rescanned
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 
         @Provides

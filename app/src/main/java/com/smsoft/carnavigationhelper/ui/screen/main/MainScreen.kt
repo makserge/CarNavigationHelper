@@ -1,6 +1,10 @@
 package com.smsoft.carnavigationhelper.ui.screen.main
 
 import android.Manifest
+import android.content.Intent
+import android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -54,21 +59,29 @@ fun MainScreen(
 
     var showDialogOverlayPermission by rememberSaveable { mutableStateOf(false) }
     var showDialogLocationPermission by rememberSaveable { mutableStateOf(false) }
+    var openAppSettings by rememberSaveable { mutableStateOf(false) }
 
     var isLocationEnabled by rememberSaveable { mutableStateOf(false) }
 
     val isEnabled by ButtonService.serviceStarted.collectAsStateWithLifecycle()
+    val activity = LocalActivity.current
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val locationType: LocationType by viewModel.locationType.collectAsStateWithLifecycle()
     val countdownTimer: Int by viewModel.countdownTimer.collectAsStateWithLifecycle()
+    val waitingForInternet: Boolean by viewModel.waitingForInternet.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
         val overlayPermission = checkOverlayPermission(context)
         if (overlayPermission) {
             val locationPermission = viewModel.checkLocationPermission(context)
             if (locationPermission) {
-                ButtonService.start(context)
+                // A navigation waiting for the internet keeps the button shown until the nav app opens
+                if (viewModel.waitingForInternet.value) {
+                    ButtonService.showButton(context)
+                } else {
+                    ButtonService.start(context)
+                }
 
                 if (isForceNavigation) {
                     viewModel.startNavigationForLocation(fusedLocationClient)
@@ -84,7 +97,14 @@ fun MainScreen(
         }
         onPauseOrDispose {
             showDialogOverlayPermission = false
+            // The countdown must not fire after the user left the screen, resume starts it again
+            viewModel.cancelCountDownTimer()
         }
+    }
+
+    // Main is the only back stack entry, so Back leaves the app the same way as Close app
+    BackHandler(enabled = isEnabled && isLocationEnabled) {
+        viewModel.closeApp(activity)
     }
 
     Scaffold(
@@ -131,6 +151,7 @@ fun MainScreen(
                 isEnabled && isLocationEnabled,
                 locationType,
                 countdownTimer,
+                waitingForInternet,
                 viewModel
             )
         }
@@ -166,16 +187,27 @@ fun MainScreen(
     if (showDialogLocationPermission) {
         val launcher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { _ ->
+        ) { result ->
+            // Denied for good (or only approximate allowed): asking again shows nothing,
+            // the permission can be granted only in the app settings then
+            openAppSettings = result[Manifest.permission.ACCESS_FINE_LOCATION] != true &&
+                    activity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) == false
             showDialogLocationPermission = false
         }
         DialogPermission(
             stringResource(R.string.message_permission_to_get_location),
             onConfirm = {
-                launcher.launch(arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                ))
+                if (openAppSettings) {
+                    showDialogLocationPermission = false
+                    context.startActivity(
+                        Intent(ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri())
+                    )
+                } else {
+                    launcher.launch(arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ))
+                }
             },
             onDismiss = {
                 showDialogLocationPermission = false

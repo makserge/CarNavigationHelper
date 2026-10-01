@@ -6,7 +6,7 @@ import com.smsoft.carnavigationhelper.data.database.entity.Song
 import com.smsoft.carnavigationhelper.data.database.dao.PlayerPlaylistDao
 
 @Database(
-    version = 1,
+    version = 2,
     entities = [
         Song::class
     ],

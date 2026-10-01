@@ -10,9 +10,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -29,29 +26,25 @@ fun Player(
     modifier: Modifier,
     padding: PaddingValues,
     viewModel: PlayerViewModel,
-    onPlaybackStarted: () -> Unit,
 ) {
     val state = viewModel.uiState.collectAsStateWithLifecycle()
     val items = viewModel.playerPlaylist.collectAsStateWithLifecycle(
         initialValue = null
     )
 
-    var player by remember { mutableStateOf<Player?>(null) }
     LaunchedEffect(Unit) {
-        viewModel.onStart() {
-            player = it
-            onPlaybackStarted()
-        }
+        viewModel.onStart()
     }
 
     Spacer(modifier = Modifier.height(16.dp))
-    when (state.value) {
-        UIState.Initial -> LoadingCircleWithText()
-        UIState.Ready -> PlayerContainer(
+    val player = viewModel.player
+    when {
+        state.value == UIState.Initial || player == null -> LoadingCircleWithText()
+        else -> PlayerContainer(
             modifier,
             padding,
             items.value,
-            player!!,
+            player,
             viewModel
         )
     }

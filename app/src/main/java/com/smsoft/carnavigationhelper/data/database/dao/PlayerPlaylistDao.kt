@@ -3,6 +3,7 @@ package com.smsoft.carnavigationhelper.data.database.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import com.smsoft.carnavigationhelper.data.database.entity.Song
 import kotlinx.coroutines.flow.Flow
 
@@ -18,5 +19,12 @@ interface PlayerPlaylistDao {
     suspend fun insertAll(entities: List<Song>)
 
     @Query("DELETE FROM ${Song.TABLE_NAME}")
-    fun clear()
+    suspend fun clear()
+
+    // One transaction, so a failed insert keeps the old playlist instead of leaving it empty
+    @Transaction
+    suspend fun replaceAll(entities: List<Song>) {
+        clear()
+        insertAll(entities)
+    }
 }

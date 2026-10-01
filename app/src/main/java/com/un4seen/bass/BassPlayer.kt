@@ -26,16 +26,12 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
     private var currentMediaItem: MediaItem? = null
     private val playlistItems = mutableListOf<MediaItem>()
     private var currentIndex = 0
-    private val audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-        .setAudioAttributes(
-            AudioAttributes.Builder()
-                .setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                .build()
-        )
-        .setOnAudioFocusChangeListener {}.build()
 
     private var userVolume = 0.8f
+
+    // Playback starts on the next AUDIOFOCUS_GAIN: the focus was delayed (e.g. during a call)
+    // or lost for a while. A pause by the user clears it, so that music is not resumed by itself
+    private var resumeOnFocusGain = false
 
     private val focusChangeListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
         when (focusChange) {
@@ -44,16 +40,36 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
             }
             AudioManager.AUDIOFOCUS_GAIN -> {
                 BASS.BASS_ChannelSetAttribute(bassHandle, BASS.BASS_ATTRIB_VOL, userVolume)
-                if (BASS.BASS_ChannelIsActive(bassHandle) == BASS.BASS_ACTIVE_PAUSED) {
+                if (resumeOnFocusGain) {
+                    resumeOnFocusGain = false
                     BASS.BASS_ChannelPlay(bassHandle, false)
                 }
             }
-            AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                // Pause but keep the focus, so playback resumes when the call or the assistant is over
+                if (BASS.BASS_ChannelIsActive(bassHandle) == BASS.BASS_ACTIVE_PLAYING) {
+                    resumeOnFocusGain = true
+                    BASS.BASS_ChannelPause(bassHandle)
+                }
+            }
+            AudioManager.AUDIOFOCUS_LOSS -> {
                 handleSetPlayWhenReady(false)
             }
         }
         handler.post { invalidateState() }
     }
+
+    // One request for both request and abandon: AudioManager matches them by the listener
+    private val audioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+        .setAudioAttributes(
+            AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build()
+        )
+        .setAcceptsDelayedFocusGain(true)
+        .setOnAudioFocusChangeListener(focusChangeListener)
+        .build()
 
     init {
         if (!BASS.BASS_Init(-1, 44100, 0)) {
@@ -97,9 +113,14 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
             ).build())
             .setPlaybackState(if (isPrepared) STATE_READY else STATE_IDLE)
             .setCurrentMediaItemIndex(if (playlistItems.isEmpty()) C.INDEX_UNSET else currentIndex)
+            // A start that waits for the audio focus still counts as playing (like ExoPlayer does), so that
+            // MediaSessionService stays in the foreground until the focus comes back
             .setPlayWhenReady(
-                BASS.BASS_ChannelIsActive(bassHandle) == BASS.BASS_ACTIVE_PLAYING,
+                BASS.BASS_ChannelIsActive(bassHandle) == BASS.BASS_ACTIVE_PLAYING || resumeOnFocusGain,
                 PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST
+            )
+            .setPlaybackSuppressionReason(
+                if (resumeOnFocusGain) PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS else PLAYBACK_SUPPRESSION_REASON_NONE
             )
             .setContentPositionMs(currentPosMs)
             .setPlaylist(playlistData)
@@ -110,9 +131,8 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
     override fun handleSetMediaItems(mediaItems: MutableList<MediaItem>, startIndex: Int, startPos: Long): ListenableFuture<*> {
         playlistItems.clear()
         playlistItems.addAll(mediaItems)
-        if (startIndex != C.INDEX_UNSET) {
-            currentIndex = startIndex
-        }
+        // C.INDEX_UNSET resets the position, the old index may not exist in the new (shorter) playlist
+        currentIndex = if (startIndex in playlistItems.indices) startIndex else 0
 
         if (playlistItems.isEmpty()) {
             currentMediaItem = null
@@ -137,28 +157,51 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
         isPrepared = false
         invalidateState()
 
-        if (bassHandle != 0) BASS.BASS_StreamFree(bassHandle)
+        if (bassHandle != 0) {
+            BASS.BASS_StreamFree(bassHandle)
+            bassHandle = 0
+        }
 
-        val path = item.mediaMetadata.displayTitle ?: ""
-        val pfd = context.contentResolver.openFileDescriptor(item.localConfiguration?.uri!!, "r")
-        if (pfd != null) {
-            bassHandle = when {
-                path.endsWith(".flac", ignoreCase = true) -> BASSFLAC.BASS_FLAC_StreamCreateFile(pfd, 0, 0, 0)
-                path.endsWith(".ape", ignoreCase = true) -> BASSAPE.BASS_APE_StreamCreateFile(pfd, 0, 0, 0)
-                else -> BASS.BASS_StreamCreateFile(pfd, 0, 0, 0)
-            }
-            if (bassHandle == 0) {
-                val error = BASS.BASS_ErrorGetCode()
-                Log.e("BassPlayer", "BASS File Error: $error.")
-                handleLoadFailure()
-            } else {
-                isPrepared = true
-                setupAutoAdvance(bassHandle)
-            }
-            pfd.close()
+        bassHandle = createBassStream(item)
+        // An unreadable song is skipped to the next one in this loop. Skipping with seekToNext() would recurse
+        // once per song and block the main thread (or overflow its stack) when the whole folder is gone
+        while (bassHandle == 0 && currentIndex < playlistItems.size - 1) {
+            currentIndex++
+            currentMediaItem = playlistItems[currentIndex]
+            bassHandle = createBassStream(playlistItems[currentIndex])
+        }
+        if (bassHandle != 0) {
+            isPrepared = true
+            setupAutoAdvance(bassHandle)
         }
 
         invalidateState()
+    }
+
+    private fun createBassStream(item: MediaItem): Int {
+        val path = item.mediaMetadata.displayTitle ?: ""
+        // The file may be gone since the last scan (deleted, renamed, SD card removed) or the folder grant lost
+        val pfd = try {
+            context.contentResolver.openFileDescriptor(item.localConfiguration?.uri!!, "r")
+        } catch (e: Exception) {
+            Log.e("BassPlayer", "Open File Error: $e")
+            null
+        }
+        if (pfd == null) return 0
+
+        // BASS keeps its own copy of the descriptor, so it is closed once the stream is created
+        val handle = pfd.use {
+            when {
+                path.endsWith(".flac", ignoreCase = true) -> BASSFLAC.BASS_FLAC_StreamCreateFile(it, 0, 0, 0)
+                path.endsWith(".ape", ignoreCase = true) -> BASSAPE.BASS_APE_StreamCreateFile(it, 0, 0, 0)
+                else -> BASS.BASS_StreamCreateFile(it, 0, 0, 0)
+            }
+        }
+        if (handle == 0) {
+            val error = BASS.BASS_ErrorGetCode()
+            Log.e("BassPlayer", "BASS File Error: $error.")
+        }
+        return handle
     }
 
     private fun setupAutoAdvance(handle: Int) {
@@ -179,17 +222,6 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
         }, 0)
     }
 
-    private fun handleLoadFailure() {
-        invalidateState()
-
-        val nextIndex = currentMediaItemIndex + 1
-        if (nextIndex < mediaItemCount) {
-            seekToNext()
-        } else {
-            stop()
-        }
-    }
-
     override fun handlePrepare(): ListenableFuture<*> {
         if (bassHandle != 0) {
             isPrepared = true
@@ -200,20 +232,15 @@ class BassPlayer(val context: Context, looper: Looper) : SimpleBasePlayer(looper
 
     override fun handleSetPlayWhenReady(playWhenReady: Boolean): ListenableFuture<*> {
         if (playWhenReady && bassHandle != 0) {
-            val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build())
-                .setAcceptsDelayedFocusGain(true)
-                .setOnAudioFocusChangeListener(focusChangeListener)
-                .build()
-
-            val result = audioManager.requestAudioFocus(focusRequest)
+            val result = audioManager.requestAudioFocus(audioFocusRequest)
+            // A delayed focus (e.g. during a call) starts playback on the later AUDIOFOCUS_GAIN,
+            // even though the stream has never played yet
+            resumeOnFocusGain = result == AudioManager.AUDIOFOCUS_REQUEST_DELAYED
             if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
                 BASS.BASS_ChannelPlay(bassHandle, false)
             }
         } else {
+            resumeOnFocusGain = false
             audioManager.abandonAudioFocusRequest(audioFocusRequest)
             BASS.BASS_ChannelPause(bassHandle)
         }

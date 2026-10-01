@@ -1,10 +1,5 @@
 package com.smsoft.carnavigationhelper.ui.screen.player
 
-import android.annotation.SuppressLint
-import android.content.Intent
-import android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,15 +21,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smsoft.carnavigationhelper.R
-import com.smsoft.carnavigationhelper.ui.composable.DialogPermission
 import com.smsoft.carnavigationhelper.ui.composable.Player
 
-@SuppressLint("InlinedApi")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerScreen(
@@ -44,14 +36,13 @@ fun PlayerScreen(
 ) {
     val viewModel: PlayerViewModel = hiltViewModel()
 
-    val context = LocalContext.current
-    var showAllFilesPermission by rememberSaveable { mutableStateOf(false) }
-    var isPlayerEnabled by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        if (viewModel.checkAllFilesPermission()) {
-            isPlayerEnabled = true
-        } else {
-            showAllFilesPermission = true
+    // onPlay runs once per back stack entry, also when the activity is recreated (e.g. rotation)
+    val playbackStarted by viewModel.playbackStarted.collectAsStateWithLifecycle()
+    var isPlayHandled by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(playbackStarted) {
+        if (playbackStarted && !isPlayHandled) {
+            isPlayHandled = true
+            onPlay()
         }
     }
 
@@ -92,41 +83,11 @@ fun PlayerScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (isPlayerEnabled) {
-                Player(
-                    modifier = Modifier,
-                    padding,
-                    viewModel,
-                    onPlaybackStarted = {
-                        onPlay()
-                    }
-                )
-            }
+            Player(
+                modifier = Modifier,
+                padding,
+                viewModel
+            )
         }
-    }
-    if (showAllFilesPermission) {
-        val context = LocalContext.current
-        val launcher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.StartActivityForResult()
-        ) { _ ->
-            if (viewModel.checkAllFilesPermission()) {
-                isPlayerEnabled = true
-            } else {
-                onBack()
-            }
-            showAllFilesPermission = false
-        }
-        DialogPermission(
-            stringResource(R.string.message_permission_to_read_all_files),
-            onConfirm = {
-                val intent = Intent(ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = "package:${context.packageName}".toUri()
-                }
-                launcher.launch(intent)
-            },
-            onDismiss = {
-                onBack()
-            }
-        )
     }
 }

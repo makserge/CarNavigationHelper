@@ -26,9 +26,6 @@ class PlayerSettingsViewModel @Inject constructor(
     val playlistPath: Flow<String>
         get() = userPreferencesRepository.playerPlaylistPathFlow
 
-    val playerType: Flow<String>
-        get() = userPreferencesRepository.playerTypeFlow
-
     var audioFilesCount = mutableIntStateOf(0)
     var audioFilesDuration = mutableLongStateOf(0)
     var audioFilesSize = mutableLongStateOf(0)
@@ -59,18 +56,30 @@ class PlayerSettingsViewModel @Inject constructor(
         }
     }
 
+    // The folder can only be read with the grant persisted when it was picked. A fresh install (default path)
+    // or a backup restore has no grant
+    fun hasFolderAccess(context: Context, path: String): Boolean {
+        val uri = path.toUri()
+        return context.contentResolver.persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
+    }
+
     fun rescanAudioFiles(context: Context) {
         isPlaylistUpdating.value = true
         CoroutineScope(Dispatchers.IO).launch {
-            val path = userPreferencesRepository.playerPlaylistPathFlow.first()
-            if (path.isNotEmpty()) {
-                playerRepository.updatePlaylist(context, path.toUri()) {
-                    audioFilesCount.intValue = it.first
-                    audioFilesDuration.longValue = it.second
-                    audioFilesSize.longValue = it.third
+            try {
+                val path = userPreferencesRepository.playerPlaylistPathFlow.first()
+                if (path.isNotEmpty()) {
+                    playerRepository.updatePlaylist(context, path.toUri()) {
+                        audioFilesCount.intValue = it.first
+                        audioFilesDuration.longValue = it.second
+                        audioFilesSize.longValue = it.third
+                    }
                 }
+            } catch (_: Exception) {
+                // e.g. SecurityException when the folder grant was revoked, the old playlist stays
+            } finally {
+                isPlaylistUpdating.value = false
             }
-            isPlaylistUpdating.value = false
         }
     }
 

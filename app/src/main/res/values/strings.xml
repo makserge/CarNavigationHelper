@@ -5,12 +5,12 @@
     <string name="open_nav_button">Open navigation home</string>
     <string name="close_app_button">Close app</string>
     <string name="countdown_timer_text">Go to action: "%1$s" in %2$d seconds</string>
+    <string name="waiting_for_internet">Waiting for stable internet…</string>
 
     <string name="permission_required">Permission required</string>
     <string name="grant_permission">Grant permission</string>
     <string name="message_permission_to_draw_on_top_others_apps">…to show floating windows the app needs permissions to draw on top of other apps</string>
     <string name="nav_app_not_found">Navigation app is not found</string>
-    <string name="player_app_not_found">Player app is not found</string>
     <string name="settings">Settings</string>
     <string name="open_home">Open home</string>
     <string name="back">Back</string>
@@ -26,13 +26,9 @@
     <string name="nav_type_waze">Waze</string>
     <string name="nav_type_igo">iGO</string>
     <string name="nav_type">Navigation type</string>
-    <string name="player_type">Player type</string>
-    <string name="player_type_internal">Internal</string>
-    <string name="player_type_aimp">AIMP</string>
     <string name="player">Player</string>
     <string name="loading">Loading…</string>
     <string name="player_playlist_path">Playlist path</string>
-    <string name="message_permission_to_read_all_files">…to scan music files the app needs permissions to access to all files</string>
     <string name="no_player_items">No items</string>
     <string name="rescan_audio_files">Rescan audio files</string>
     <string name="current_playlist">Current playlist</string>
