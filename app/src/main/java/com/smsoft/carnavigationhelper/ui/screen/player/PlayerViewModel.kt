@@ -2,6 +2,7 @@ package com.smsoft.carnavigationhelper.ui.screen.player
 
 import android.content.ComponentName
 import android.content.Context
+import android.os.Bundle
 import android.text.Html
 import androidx.annotation.OptIn
 import androidx.compose.runtime.mutableFloatStateOf
@@ -23,13 +24,17 @@ import androidx.navigation.toRoute
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.smsoft.carnavigationhelper.data.Player as PlayerRoute
+import com.smsoft.carnavigationhelper.data.TrackInfo
+import com.smsoft.carnavigationhelper.data.database.entity.Song
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
 import com.smsoft.carnavigationhelper.service.AudioPlaybackService
+import com.un4seen.bass.BassPlayer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -38,11 +43,13 @@ import java.util.concurrent.ExecutionException
 import javax.inject.Inject
 import kotlin.random.Random
 
+@OptIn(UnstableApi::class)
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     @param:ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
-    playerRepository: PlayerRepository
+    private val playerRepository: PlayerRepository,
+    bassPlayer: BassPlayer
 ) : ViewModel() {
     // Player(true) is the one that starts the music for the trip
     private val isForceNavigation = savedStateHandle.toRoute<PlayerRoute>().isForceNavigation
@@ -61,6 +68,9 @@ class PlayerViewModel @Inject constructor(
     var trackCurrentPosition = mutableLongStateOf(0L)
 
     val playerPlaylist = playerRepository.getAll
+
+    // Codec and bitrate of the playing song, straight from the player (same process)
+    val trackInfo: StateFlow<TrackInfo?> = bassPlayer.trackInfo
 
     private var job: Job? = null
 
@@ -115,35 +125,40 @@ class PlayerViewModel @Inject constructor(
         if (isStarting) return
         isStarting = true
         viewModelScope.launch {
-            val mediaItems = mutableListOf<MediaItem>()
-            val items = playerPlaylist.first()
-            for (item in items) {
-                val mediaItem = MediaItem.Builder()
-                    .setMediaId(item.id.toString())
-                    .setUri(item.contentUri)
-                    .setMediaMetadata(
-                        MediaMetadata.Builder()
-                            .setDisplayTitle(item.fileName)
-                            .setArtist(item.artist)
-                            .setTitle(item.title)
-                            .setDurationMs(item.duration)
-                            .build()
-                    )
-                    .build()
-                mediaItems.add(mediaItem)
-            }
+            val mediaItems = playerPlaylist.first().map { toMediaItem(it) }
             val controller = player
             if (controller == null) {
                 setupPlayer(mediaItems)
             } else {
-                // Shown again (e.g. back from the player settings): only a rescan changes the playlist
+                // Shown again (e.g. back from the player settings): only a rescan replaces the playlist,
+                // songs taken off the blacklist are appended
                 syncPlaylist(controller, mediaItems)
                 isStarting = false
             }
         }
     }
 
-    @OptIn(UnstableApi::class)
+    // The stored loudness lets the player apply the normalisation gain from the first second of the song
+    private fun toMediaItem(song: Song): MediaItem {
+        val extras = Bundle().apply {
+            song.loudness?.let { putDouble(BassPlayer.EXTRA_LOUDNESS, it) }
+            song.peak?.let { putDouble(BassPlayer.EXTRA_PEAK, it) }
+        }
+        return MediaItem.Builder()
+            .setMediaId(song.id.toString())
+            .setUri(song.contentUri)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setDisplayTitle(song.fileName)
+                    .setArtist(song.artist)
+                    .setTitle(song.title)
+                    .setDurationMs(song.duration)
+                    .setExtras(extras)
+                    .build()
+            )
+            .build()
+    }
+
     private fun setupPlayer(items: List<MediaItem>) {
         val sessionToken = SessionToken(context, ComponentName(context, AudioPlaybackService::class.java))
         val future = MediaController.Builder(context, sessionToken).buildAsync()
@@ -154,6 +169,7 @@ class PlayerViewModel @Inject constructor(
                 controller.addListener(playerListener)
                 player = controller
                 syncPlaylist(controller, items)
+                watchRescan(controller)
                 playbackStartedInt.value = true
             } catch (_: ExecutionException) {
                 // No music, but the auto navigation must still go on
@@ -166,13 +182,19 @@ class PlayerViewModel @Inject constructor(
     }
 
     // The session outlives this ViewModel (e.g. the player is opened again from the music icon while music plays),
-    // so a new shuffled playlist is only set when the session has none or a rescan changed the songs.
-    // Player(true) also sets it when the music is paused or over (e.g. paused at the end of the last trip)
+    // so a new shuffled playlist is only set when the session has none or a rescan changed the songs (new ids).
+    // Blacklisted songs are already gone from both. Player(true) also sets it when the music is paused or over
+    // (e.g. paused at the end of the last trip)
     private fun syncPlaylist(controller: Player, items: List<MediaItem>) {
         val sessionIds = (0 until controller.mediaItemCount).map { controller.getMediaItemAt(it).mediaId }.toSet()
-        if (sessionIds.isNotEmpty() && sessionIds == items.map { it.mediaId }.toSet()
+        if (sessionIds.isNotEmpty() && items.map { it.mediaId }.toSet().containsAll(sessionIds)
             && (controller.playWhenReady || !isForceNavigation)) {
-            // Keep playing untouched. No callback fires for the item that is already playing, so show it directly
+            // Keep playing untouched. Songs taken off the blacklist are only added to the running playlist
+            val added = items.filter { it.mediaId !in sessionIds }
+            if (added.isNotEmpty()) {
+                controller.addMediaItems(added.shuffled(Random(System.currentTimeMillis())))
+            }
+            // No callback fires for the item that is already playing, so show it directly
             playerListener.onMediaItemTransition(controller.currentMediaItem, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
             playerListener.onMediaMetadataChanged(controller.mediaMetadata)
             playerListener.onIsPlayingChanged(controller.isPlaying)
@@ -182,6 +204,35 @@ class PlayerViewModel @Inject constructor(
             controller.setMediaItems(items.shuffled(Random(System.currentTimeMillis())))
             controller.prepare()
             controller.playWhenReady = true
+        }
+    }
+
+    // A rescan goes on after Back from the player settings and may end while this screen is shown. Its rows have
+    // new ids, so a session that has none of them is replaced right away (as onStart would), otherwise
+    // dislike, Next and the measurements would use the old ids
+    private fun watchRescan(controller: Player) {
+        viewModelScope.launch {
+            playerPlaylist.collect { songs ->
+                val ids = songs.map { it.id.toString() }.toSet()
+                val sessionIds = (0 until controller.mediaItemCount).map { controller.getMediaItemAt(it).mediaId }
+                if (sessionIds.isNotEmpty() && sessionIds.none { it in ids }) {
+                    syncPlaylist(controller, songs.map { toMediaItem(it) })
+                }
+            }
+        }
+    }
+
+    // Hidden and never played again until the next rescan. Removing the playing song moves on like Next
+    fun dislike(song: Song) {
+        viewModelScope.launch {
+            playerRepository.setBlacklisted(song.id, true)
+        }
+        player?.let { controller ->
+            val index = (0 until controller.mediaItemCount)
+                .firstOrNull { controller.getMediaItemAt(it).mediaId == song.id.toString() }
+            if (index != null) {
+                controller.removeMediaItem(index)
+            }
         }
     }
 

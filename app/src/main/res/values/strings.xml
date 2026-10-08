@@ -36,4 +36,11 @@
     <string name="update_content">Update content</string>
     <string name="updating">Updating…</string>
     <string name="pick_playlist_path">Pick playlist path</string>
+    <string name="dislike">Dislike</string>
+    <string name="volume_normalization">Volume normalisation</string>
+    <string name="volume_normalization_hint">Same loudness for all tracks</string>
+    <string name="blacklist">Blacklist (%1$d)</string>
+    <string name="blacklist_title">Blacklist</string>
+    <string name="no_blacklisted_tracks">No blacklisted tracks</string>
+    <string name="remove_from_blacklist">Remove from blacklist</string>
 </resources>

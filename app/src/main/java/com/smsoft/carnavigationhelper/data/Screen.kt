@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object PlayerSettings : Screen("player_settings")
+    data object Blacklist : Screen("blacklist")
 }
 
 @Serializable

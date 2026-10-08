@@ -17,6 +17,11 @@ data class Song(
     val contentUri: String,
     val fileSize: Long,
     @ColumnInfo(typeAffinity = ColumnInfo.BLOB) val image: ByteArray? = null,
+    // Hidden from the player, reset by a rescan (new rows)
+    @ColumnInfo(defaultValue = "0") val isBlacklisted: Boolean = false,
+    // Integrated loudness in LUFS and linear sample peak, null until measured. Kept over a rescan
+    val loudness: Double? = null,
+    val peak: Double? = null,
 ) {
     companion object {
         const val TABLE_NAME = "player_playlist"

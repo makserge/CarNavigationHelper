@@ -2,6 +2,7 @@ package com.smsoft.carnavigationhelper.repository
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
@@ -45,6 +46,10 @@ class UserPreferencesRepository @Inject constructor(
 
         val DEFAULT_NAV_TYPE = NavType.WAZE.name
         val NAV_TYPE = stringPreferencesKey("nav_type")
+
+        // Same loudness for all tracks (one static gain per track, not compression)
+        const val DEFAULT_VOLUME_NORMALIZATION = true
+        val VOLUME_NORMALIZATION = booleanPreferencesKey("volume_normalization")
 
         // Number settings are typed as text, only values that parse and are in range may be saved
         fun isValidValue(key: Preferences.Key<out Any>, value: String): Boolean = when (key) {
@@ -98,10 +103,21 @@ class UserPreferencesRepository @Inject constructor(
             preferences[NAV_TYPE] ?: DEFAULT_NAV_TYPE
         }
 
+    val volumeNormalizationFlow: Flow<Boolean> = preferencesFlow
+        .map { preferences ->
+            preferences[VOLUME_NORMALIZATION] ?: DEFAULT_VOLUME_NORMALIZATION
+        }
+
     suspend fun setButtonPosition(x: Int, y: Int) {
         dataStore.edit { preferences ->
             preferences[BUTTON_POSITION_X] = x
             preferences[BUTTON_POSITION_Y] = y
+        }
+    }
+
+    suspend fun setVolumeNormalization(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[VOLUME_NORMALIZATION] = enabled
         }
     }
 

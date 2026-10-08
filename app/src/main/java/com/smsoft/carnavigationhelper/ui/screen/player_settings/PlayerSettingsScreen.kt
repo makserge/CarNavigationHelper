@@ -31,7 +31,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSettingsScreen(
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onBlacklistAction: () -> Unit
 ) {
     val viewModel: PlayerSettingsViewModel = hiltViewModel()
     val context = LocalContext.current
@@ -86,7 +87,8 @@ fun PlayerSettingsScreen(
                 viewModel = viewModel,
                 onPickFolder = {
                     launcher.launch(null)
-                }
+                },
+                onBlacklistAction = onBlacklistAction
             )
         }
     }

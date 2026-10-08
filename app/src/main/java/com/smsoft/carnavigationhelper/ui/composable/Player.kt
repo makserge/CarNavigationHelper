@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import com.smsoft.carnavigationhelper.R
+import com.smsoft.carnavigationhelper.data.TrackInfo
 import com.smsoft.carnavigationhelper.data.database.entity.Song
 import com.smsoft.carnavigationhelper.ui.screen.player.PlayerViewModel
 import com.smsoft.carnavigationhelper.ui.screen.player.UIState
@@ -58,11 +59,16 @@ fun PlayerContainer(
     player: Player,
     viewModel: PlayerViewModel
 ) {
+    val trackInfo by viewModel.trackInfo.collectAsStateWithLifecycle()
+
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = viewModel.trackTitle.value, style = MaterialTheme.typography.headlineMedium)
+        trackInfo?.let {
+            Text(text = formatTrackInfo(it), style = MaterialTheme.typography.bodyMedium)
+        }
 
         AudioPlayerProgress(
             modifier = Modifier,
@@ -77,7 +83,8 @@ fun PlayerContainer(
                     modifier = Modifier,
                     padding = padding,
                     items = items,
-                    selectedItemId = viewModel.trackCurrentMediaId.longValue
+                    selectedItemId = viewModel.trackCurrentMediaId.longValue,
+                    onDislike = { viewModel.dislike(it) }
                 )
             } else {
                 NoItems(
@@ -87,4 +94,12 @@ fun PlayerContainer(
             }
         }
     }
+}
+
+// e.g. "FLAC · 905 kbps", unknown parts are left out
+private fun formatTrackInfo(info: TrackInfo): String {
+    val parts = mutableListOf<String>()
+    if (info.codec.isNotEmpty()) parts.add(info.codec)
+    if (info.bitrateKbps > 0) parts.add("${info.bitrateKbps} kbps")
+    return parts.joinToString(" · ")
 }

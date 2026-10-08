@@ -21,6 +21,7 @@ import com.smsoft.carnavigationhelper.data.Player
 import com.smsoft.carnavigationhelper.data.Screen
 import com.smsoft.carnavigationhelper.ui.screen.main.MainScreen
 import com.smsoft.carnavigationhelper.ui.screen.player.PlayerScreen
+import com.smsoft.carnavigationhelper.ui.screen.blacklist.BlacklistScreen
 import com.smsoft.carnavigationhelper.ui.screen.player_settings.PlayerSettingsScreen
 import com.smsoft.carnavigationhelper.ui.screen.settings.SettingsScreen
 import com.smsoft.carnavigationhelper.ui.theme.CarNavigationHelperTheme
@@ -85,7 +86,18 @@ fun AppNavigation() {
         }
 
         composable(Screen.PlayerSettings.route) {
-            PlayerSettingsScreen {
+            PlayerSettingsScreen(
+                onBack = {
+                    navController.navigateUp()
+                },
+                onBlacklistAction = {
+                    navController.navigate(Screen.Blacklist.route)
+                }
+            )
+        }
+
+        composable(Screen.Blacklist.route) {
+            BlacklistScreen {
                 navController.navigateUp()
             }
         }

@@ -7,6 +7,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import com.smsoft.carnavigationhelper.data.database.CarNavigationHelperDatabase
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import com.un4seen.bass.BassPlayer
 import dagger.Module
 import dagger.Provides
@@ -27,8 +28,10 @@ class PlayerModule {
     @Singleton
     fun providePlayer(
         @ApplicationContext context: Context,
-        looper: Looper
-    ): BassPlayer = BassPlayer(context, looper)
+        looper: Looper,
+        playerRepository: PlayerRepository,
+        userPreferencesRepository: UserPreferencesRepository,
+    ): BassPlayer = BassPlayer(context, looper, playerRepository, userPreferencesRepository)
 
     @OptIn(UnstableApi::class)
     @Provides

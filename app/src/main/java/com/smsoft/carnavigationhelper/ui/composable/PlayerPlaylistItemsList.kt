@@ -13,7 +13,8 @@ fun PlayerPlaylistItemsList(
     modifier: Modifier = Modifier,
     padding: PaddingValues,
     items: List<Song>,
-    selectedItemId: Long
+    selectedItemId: Long,
+    onDislike: (Song) -> Unit
 ) {
     val listState = rememberLazyListState()
 
@@ -34,7 +35,8 @@ fun PlayerPlaylistItemsList(
             PlaylistItem(
                 modifier = Modifier,
                 item = items[index],
-                isSelected = isSelected
+                isSelected = isSelected,
+                onDislike = { onDislike(items[index]) }
             )
         }
     }

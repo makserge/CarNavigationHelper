@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.net.toUri
 import androidx.datastore.preferences.core.Preferences
 import androidx.lifecycle.ViewModel
+import com.smsoft.carnavigationhelper.data.database.entity.Song
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,6 +27,12 @@ class PlayerSettingsViewModel @Inject constructor(
     val playlistPath: Flow<String>
         get() = userPreferencesRepository.playerPlaylistPathFlow
 
+    val volumeNormalization: Flow<Boolean>
+        get() = userPreferencesRepository.volumeNormalizationFlow
+
+    val blacklist: Flow<List<Song>>
+        get() = playerRepository.getBlacklisted
+
     var audioFilesCount = mutableIntStateOf(0)
     var audioFilesDuration = mutableLongStateOf(0)
     var audioFilesSize = mutableLongStateOf(0)
@@ -37,8 +44,9 @@ class PlayerSettingsViewModel @Inject constructor(
         }
     }
 
+    // All songs of the folder like the rescan counts them, blacklisted ones included
     private suspend fun loadPlaylistSummary() {
-        val items = playerRepository.getAll.first()
+        val items = playerRepository.getAll.first() + playerRepository.getBlacklisted.first()
         var totalDuration = 0L
         var totalSize = 0L
         for (item in items) {
@@ -53,6 +61,13 @@ class PlayerSettingsViewModel @Inject constructor(
     suspend fun updateField(key: Preferences.Key<out Any>, value: String) {
         if (value.isNotEmpty()) {
             userPreferencesRepository.setValue(key, value)
+        }
+    }
+
+    // The player applies it to the playing song at once
+    fun setVolumeNormalization(enabled: Boolean) {
+        CoroutineScope(Dispatchers.IO).launch {
+            userPreferencesRepository.setVolumeNormalization(enabled)
         }
     }
 
