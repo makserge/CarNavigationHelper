@@ -74,6 +74,8 @@ class BassPlayer(
     private val scope = CoroutineScope(SupervisorJob() + handler.asCoroutineDispatcher())
 
     private var normalizationEnabled = UserPreferencesRepository.DEFAULT_VOLUME_NORMALIZATION
+    // The gain slider of the player settings, added to the normalisation gain of every song
+    private var userGainDb = UserPreferencesRepository.DEFAULT_PLAYER_GAIN_DB
     // Normalisation gain of the loaded song, null when it is off or the song is not measured yet
     private var appliedGainDb: Double? = null
 
@@ -137,6 +139,13 @@ class BassPlayer(
                 normalizationEnabled = enabled
                 applyGain(slide = false)
                 queueMeasurements()
+            }
+        }
+        // The gain slider applies to the playing song at once
+        scope.launch {
+            userPreferencesRepository.playerGainFlow.distinctUntilChanged().collect { gainDb ->
+                userGainDb = gainDb
+                applyGain(slide = false)
             }
         }
     }
@@ -358,7 +367,9 @@ class BassPlayer(
         }
         val loudness = currentMediaItem?.let { loudnessOf(it) }
         appliedGainDb = if (normalizationEnabled && loudness != null) LoudnessAnalyzer.gainDb(loudness.lufs, loudness.peak) else null
-        val gainDb = if (normalizationEnabled) appliedGainDb ?: LoudnessAnalyzer.DEFAULT_GAIN_DB else 0.0
+        val normalisationDb = if (normalizationEnabled) appliedGainDb ?: LoudnessAnalyzer.DEFAULT_GAIN_DB else 0.0
+        // The user gain also applies with normalisation off. It is not limited by the peak, so it may clip
+        val gainDb = normalisationDb + userGainDb
         val volume = 10.0.pow(gainDb / 20.0).toFloat()
         if (!slide || !BASS.BASS_ChannelSlideAttribute(bassHandle, BASS.BASS_ATTRIB_VOLDSP, volume, GAIN_SLIDE_MS)) {
             BASS.BASS_ChannelSetAttribute(bassHandle, BASS.BASS_ATTRIB_VOLDSP, volume)

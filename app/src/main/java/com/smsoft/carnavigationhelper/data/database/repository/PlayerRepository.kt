@@ -6,10 +6,14 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import com.smsoft.carnavigationhelper.data.database.CarNavigationHelperDatabase
 import com.smsoft.carnavigationhelper.data.database.entity.Song
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -29,13 +33,22 @@ class PlayerRepository@Inject constructor(
     suspend fun setLoudness(id: Long, loudness: Double, peak: Double) =
         playerPlaylistDao.setLoudness(id, loudness, peak)
 
-    // Replaces the rows, which resets the blacklist. Loudness is carried over by contentUri in replaceAll
+    // Replaces the rows, which resets the blacklist. Loudness is carried over by contentUri in replaceAll.
+    // A stopped scan replaces the playlist with the songs scanned so far, the rest of the folder is left out
     suspend fun updatePlaylist(
         context: Context,
         path: Uri,
         callback: (Triple<Int, Long, Long>) -> Unit
     ) {
-        val songs = scanFiles(context, path, callback)
+        val songs = mutableListOf<Song>()
+        try {
+            scanFiles(context, path, songs, callback)
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) {
+                playerPlaylistDao.replaceAll(songs)
+            }
+            throw e
+        }
         if (songs.isNotEmpty()) {
             playerPlaylistDao.replaceAll(songs)
         }
@@ -45,7 +58,8 @@ class PlayerRepository@Inject constructor(
     private data class ScanFile(val uri: Uri, val fileName: String, val fileSize: Long)
 
     // One children query per folder, subfolders are listed recursively
-    private fun listAudioFiles(context: Context, path: Uri, parentId: String): List<ScanFile> {
+    // Checks for a stop at every entry, so that a big folder can be stopped while it is listed
+    private suspend fun listAudioFiles(context: Context, path: Uri, parentId: String): List<ScanFile> {
         val files = mutableListOf<ScanFile>()
         val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(path, parentId)
         val projection = arrayOf(
@@ -61,6 +75,7 @@ class PlayerRepository@Inject constructor(
             val sizeIndex = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_SIZE)
 
             while (cursor.moveToNext()) {
+                currentCoroutineContext().ensureActive()
                 val docId = cursor.getString(idIndex)
                 val mimeType = cursor.getString(mimeIndex)
                 if (mimeType == DocumentsContract.Document.MIME_TYPE_DIR) {
@@ -79,18 +94,18 @@ class PlayerRepository@Inject constructor(
         return files
     }
 
+    // Songs are added to the given list chunk by chunk, so a stopped scan keeps the ones it has read
     private suspend fun scanFiles(
         context: Context,
         path: Uri,
+        songs: MutableList<Song>,
         callback: (Triple<Int, Long, Long>) -> Unit,
-    ): List<Song> {
+    ) {
         val files = withContext(Dispatchers.IO) {
             listAudioFiles(context, path, DocumentsContract.getTreeDocumentId(path))
         }
         // Songs of the last scan by uri. A file with the same known size and a readable duration keeps its tags and is not opened again
         val previousSongs = (getAll.first() + getBlacklisted.first()).associateBy { it.contentUri }
-
-        val songs = mutableListOf<Song>()
 
         var totalAmount = 0
         var totalDuration = 0L
@@ -110,7 +125,6 @@ class PlayerRepository@Inject constructor(
             }
             callback(Triple(totalAmount, totalDuration, totalSize))
         }
-        return songs
     }
 
     private fun readSong(context: Context, file: ScanFile, previous: Song?): Song {
@@ -150,6 +164,6 @@ class PlayerRepository@Inject constructor(
 
     companion object {
         // Files whose tags are read at the same time
-        private const val PARALLEL_SCANS = 10
+        private const val PARALLEL_SCANS = 4
     }
 }

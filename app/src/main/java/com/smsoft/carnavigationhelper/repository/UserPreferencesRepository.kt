@@ -51,6 +51,11 @@ class UserPreferencesRepository @Inject constructor(
         const val DEFAULT_VOLUME_NORMALIZATION = true
         val VOLUME_NORMALIZATION = booleanPreferencesKey("volume_normalization")
 
+        // Extra gain in dB on top of the normalisation, or on top of 0 dB when it is off
+        const val DEFAULT_PLAYER_GAIN_DB = 0.0
+        val PLAYER_GAIN_DB = doublePreferencesKey("player_gain_db")
+        val PLAYER_GAIN_DB_RANGE = -12.0..12.0
+
         // Number settings are typed as text, only values that parse and are in range may be saved
         fun isValidValue(key: Preferences.Key<out Any>, value: String): Boolean = when (key) {
             HOME_POSITION_LAT, WORK_POSITION_LAT -> value.toDoubleOrNull()?.let { it in -90.0..90.0 } == true
@@ -108,6 +113,11 @@ class UserPreferencesRepository @Inject constructor(
             preferences[VOLUME_NORMALIZATION] ?: DEFAULT_VOLUME_NORMALIZATION
         }
 
+    val playerGainFlow: Flow<Double> = preferencesFlow
+        .map { preferences ->
+            preferences[PLAYER_GAIN_DB] ?: DEFAULT_PLAYER_GAIN_DB
+        }
+
     suspend fun setButtonPosition(x: Int, y: Int) {
         dataStore.edit { preferences ->
             preferences[BUTTON_POSITION_X] = x
@@ -118,6 +128,12 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setVolumeNormalization(enabled: Boolean) {
         dataStore.edit { preferences ->
             preferences[VOLUME_NORMALIZATION] = enabled
+        }
+    }
+
+    suspend fun setPlayerGain(gainDb: Double) {
+        dataStore.edit { preferences ->
+            preferences[PLAYER_GAIN_DB] = gainDb.coerceIn(PLAYER_GAIN_DB_RANGE)
         }
     }
 

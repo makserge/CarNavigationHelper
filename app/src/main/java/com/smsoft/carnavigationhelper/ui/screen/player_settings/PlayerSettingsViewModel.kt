@@ -12,8 +12,12 @@ import com.smsoft.carnavigationhelper.data.database.entity.Song
 import com.smsoft.carnavigationhelper.data.database.repository.PlayerRepository
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -30,6 +34,9 @@ class PlayerSettingsViewModel @Inject constructor(
     val volumeNormalization: Flow<Boolean>
         get() = userPreferencesRepository.volumeNormalizationFlow
 
+    val playerGain: Flow<Double>
+        get() = userPreferencesRepository.playerGainFlow
+
     val blacklist: Flow<List<Song>>
         get() = playerRepository.getBlacklisted
 
@@ -37,6 +44,7 @@ class PlayerSettingsViewModel @Inject constructor(
     var audioFilesDuration = mutableLongStateOf(0)
     var audioFilesSize = mutableLongStateOf(0)
     var isPlaylistUpdating = mutableStateOf(false)
+    private var scanJob: Job? = null
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
@@ -71,6 +79,13 @@ class PlayerSettingsViewModel @Inject constructor(
         }
     }
 
+    // Saved when the slider is released, the player applies it to the playing song at once
+    fun setPlayerGain(gainDb: Double) {
+        CoroutineScope(Dispatchers.IO).launch {
+            userPreferencesRepository.setPlayerGain(gainDb)
+        }
+    }
+
     // The folder can only be read with the grant persisted when it was picked. A fresh install (default path)
     // or a backup restore has no grant
     fun hasFolderAccess(context: Context, path: String): Boolean {
@@ -79,8 +94,9 @@ class PlayerSettingsViewModel @Inject constructor(
     }
 
     fun rescanAudioFiles(context: Context) {
+        if (scanJob?.isActive == true) return
         isPlaylistUpdating.value = true
-        CoroutineScope(Dispatchers.IO).launch {
+        scanJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val path = userPreferencesRepository.playerPlaylistPathFlow.first()
                 if (path.isNotEmpty()) {
@@ -90,12 +106,23 @@ class PlayerSettingsViewModel @Inject constructor(
                         audioFilesSize.longValue = it.third
                     }
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 // e.g. SecurityException when the folder grant was revoked, the old playlist stays
             } finally {
-                isPlaylistUpdating.value = false
+                withContext(NonCancellable) {
+                    isPlaylistUpdating.value = false
+                    // A stopped scan shows the counts of the playlist that is still there
+                    loadPlaylistSummary()
+                }
             }
         }
+    }
+
+    // The playlist is replaced only when a scan finishes, so a stopped one leaves the old playlist in place
+    fun stopRescan() {
+        scanJob?.cancel()
     }
 
     fun getPathFromUri(path: String): String {

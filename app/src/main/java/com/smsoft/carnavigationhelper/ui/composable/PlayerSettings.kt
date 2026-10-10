@@ -15,10 +15,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,9 +30,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.smsoft.carnavigationhelper.R
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_PLAYER_GAIN_DB
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_PLAYER_PLAYLIST_PATH
 import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.DEFAULT_VOLUME_NORMALIZATION
+import com.smsoft.carnavigationhelper.repository.UserPreferencesRepository.Companion.PLAYER_GAIN_DB_RANGE
 import com.smsoft.carnavigationhelper.ui.screen.player_settings.PlayerSettingsViewModel
+import kotlin.math.roundToInt
 
 @Composable
 fun PlayerSettings(
@@ -45,6 +51,9 @@ fun PlayerSettings(
     )
     val volumeNormalization by viewModel.volumeNormalization.collectAsStateWithLifecycle(
         initialValue = DEFAULT_VOLUME_NORMALIZATION
+    )
+    val playerGain by viewModel.playerGain.collectAsStateWithLifecycle(
+        initialValue = DEFAULT_PLAYER_GAIN_DB
     )
     val blacklist by viewModel.blacklist.collectAsStateWithLifecycle(
         initialValue = emptyList()
@@ -77,10 +86,15 @@ fun PlayerSettings(
                     onPickFolder()
                 }
             },
+            onStop = { viewModel.stopRescan() },
         )
         VolumeNormalization(
             checked = volumeNormalization,
             onCheckedChange = { viewModel.setVolumeNormalization(it) }
+        )
+        PlayerGain(
+            gainDb = playerGain,
+            onGainChange = { viewModel.setPlayerGain(it) }
         )
         Blacklist(
             count = blacklist.size,
@@ -116,6 +130,45 @@ private fun VolumeNormalization(
         Switch(
             checked = checked,
             onCheckedChange = null
+        )
+    }
+}
+
+// Extra gain for all songs, saved to 0.1 dB when the slider is released. It moves while dragging
+@Composable
+private fun PlayerGain(
+    gainDb: Double,
+    onGainChange: (Double) -> Unit
+) {
+    // Follows the stored value, but keeps the dragged value until it is saved
+    val sliderValue = remember(gainDb) { mutableFloatStateOf(gainDb.toFloat()) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(end = 16.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = stringResource(R.string.player_gain)
+            )
+            Text(
+                text = stringResource(R.string.gain_value, sliderValue.floatValue)
+            )
+        }
+        Text(
+            text = stringResource(R.string.player_gain_hint),
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Slider(
+            value = sliderValue.floatValue,
+            onValueChange = { sliderValue.floatValue = it },
+            onValueChangeFinished = {
+                onGainChange((sliderValue.floatValue * 10).roundToInt() / 10.0)
+            },
+            valueRange = PLAYER_GAIN_DB_RANGE.start.toFloat()..PLAYER_GAIN_DB_RANGE.endInclusive.toFloat()
         )
     }
 }

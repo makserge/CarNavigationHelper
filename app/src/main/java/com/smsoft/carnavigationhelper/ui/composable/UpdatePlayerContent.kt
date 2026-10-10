@@ -26,7 +26,8 @@ fun UpdatePlayerContent(
     audioFilesCount: String,
     audioFilesDuration: Long,
     audioFilesSize: Long,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onStop: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -49,7 +50,7 @@ fun UpdatePlayerContent(
                         .padding(
                             top = 12.dp,
                             bottom = 12.dp,
-                            end = 52.dp),
+                            end = 16.dp),
                     text = stringResource(R.string.updating)
                 )
                 CircularProgressIndicator(
@@ -60,6 +61,16 @@ fun UpdatePlayerContent(
                         )
                         .size(16.dp),
                     strokeWidth = 2.dp
+                )
+                Text(
+                    modifier = Modifier
+                        .padding(
+                            top = 12.dp,
+                            bottom = 12.dp,
+                            start = 36.dp,
+                            end = 16.dp)
+                        .clickable(onClick = onStop),
+                    text = stringResource(R.string.stop_scan)
                 )
             } else {
                 Text(

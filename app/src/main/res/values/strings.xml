@@ -35,6 +35,10 @@
     <string name="gb">%.2f Gb</string>
     <string name="update_content">Update content</string>
     <string name="updating">Updating…</string>
+    <string name="stop_scan">Stop</string>
+    <string name="player_gain">Gain</string>
+    <string name="player_gain_hint">Added to every track, also with normalisation off</string>
+    <string name="gain_value">%1$+.1f dB</string>
     <string name="pick_playlist_path">Pick playlist path</string>
     <string name="dislike">Dislike</string>
     <string name="volume_normalization">Volume normalisation</string>

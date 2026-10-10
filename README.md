@@ -33,7 +33,9 @@ The app, its launch screen (logo) and the system bars follow the phone's light/d
 **Player settings** (gear icon on the player screen):
 - Music folder, picked with the system folder picker
 - **Update content** rescans the folder (audio files in all subfolders). Opens the folder picker if no folder was picked yet. A rescan clears the blacklist; measured loudness is kept. A rescan is fast for songs whose file size did not change, since their tags are kept.
+  - While it runs, **Stop** ends the scan early. The playlist is replaced by the songs scanned so far, the rest of the folder is left out, and the blacklist is cleared as with a full rescan.
 - **Volume normalisation** on/off (on by default). Switching applies to the playing song at once.
+- **Gain** (−12 … +12 dB, 0 by default, saved to 0.1 dB) is added to every song, also with normalisation off. It is saved when the slider is released and applies to the playing song at once. Gain is not limited by the peak, so a high value can clip loud songs.
 - **Blacklist (N)** opens its own screen with the blacklisted songs. The close button next to a song takes it off the list; it is added to the running playlist without restarting the music.
 
 After installing an update that changes the music database, tap **Update content** once. Home/work coordinates and other settings are kept.
