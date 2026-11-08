@@ -41,10 +41,18 @@ fun PlayerSettingsScreen(
         onResult = { uri ->
             uri?.let {
                 try {
-                    context.contentResolver.takePersistableUriPermission(
-                        it,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    )
+                    // Read and write: content sync copies files into this folder. Read only if the provider refuses write
+                    try {
+                        context.contentResolver.takePersistableUriPermission(
+                            it,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                        )
+                    } catch (_: SecurityException) {
+                        context.contentResolver.takePersistableUriPermission(
+                            it,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        )
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         viewModel.updateField(
                             UserPreferencesRepository.PLAYER_PLAYLIST_PATH,

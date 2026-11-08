@@ -1,10 +1,10 @@
 # CarNavigationHelper
 
-Android app for a phone that lives in the car. On start it plays music, works out whether you are at home or at work, and after a short countdown starts Waze (or iGO) to the other place. A floating button brings the app back from the navigation app.
+Android app for a device that lives in the car. On start it plays music, works out whether you are at home or at work, and after a short countdown starts Waze (or iGO) to the other place. A floating button brings the app back from the navigation app.
 
 ## How it works
 
-1. The app starts (for example automatically when the phone connects to the car).
+1. The app starts (for example automatically when the device connects to the car).
 2. The music player starts a shuffled playlist from your music folder.
    - Pressing **Next** (in the app, the media notification or the car's buttons) blacklists the song that was playing: it disappears from the track list, is never played again and the next song starts (also when the music was paused). The thumb-down button on a row of the track list blacklists any song the same way, but keeps the music playing or paused as it was. A song that ends by itself, **Previous** and Next after the last song has ended don't blacklist anything.
    - With **Volume normalisation** on, all songs play at the same loudness (target −18 LUFS, EBU R128). Each song gets one fixed gain, never more than its peak allows, so there is no clipping and no compression. The loudness is measured once per song in the background and stored; a song not measured yet starts at an estimate and glides to its exact level once measured.
@@ -21,7 +21,7 @@ Android app for a phone that lives in the car. On start it plays music, works ou
 
 Back on the main screen works like **Close app**: it cancels the countdown or a waiting start, closes the app and leaves the floating button.
 
-The app, its launch screen (logo) and the system bars follow the phone's light/dark mode automatically. A switch while the app is open doesn't restart the screen or the countdown. On Android 13+ the launcher icon also supports themed icons.
+The app, its launch screen (logo) and the system bars follow the device's light/dark mode automatically. A switch while the app is open doesn't restart the screen or the countdown. On Android 13+ the launcher icon also supports themed icons.
 
 ## Settings
 
@@ -37,6 +37,14 @@ The app, its launch screen (logo) and the system bars follow the phone's light/d
 - **Volume normalisation** on/off (on by default). Switching applies to the playing song at once.
 - **Gain** (−12 … +12 dB, 0 by default, saved to 0.1 dB) is added to every song, also with normalisation off. It is saved when the slider is released and applies to the playing song at once. Gain is not limited by the peak, so a high value can clip loud songs.
 - **Blacklist (N)** opens its own screen with the blacklisted songs. The close button next to a song takes it off the list; it is added to the running playlist without restarting the music.
+
+**Content sync** (in Player settings): copies new audio files from the Home Assistant RSS Downloader add-on into the music folder.
+
+Setup: in the add-on's configuration, turn on `sync_enabled`, set `sync_token` to a secret of at least 16 characters, and restart the add-on. In the car app, enter the add-on address (`http://<HA address>:8100`) and the same value as **Sync token**, then tap **Sync now**. While a sync runs the button shows **Stop**; files already copied are kept and the player list is updated. With **Automatic sync** on, the sync runs when the device joins Wi-Fi (unmetered) and the add-on answers, at most once an hour. If the add-on is not reachable, it is retried every 15 minutes while on Wi-Fi. Sync only adds files: it never deletes or overwrites. A file with the same name but another size is a conflict and is left alone. The folder structure of the add-on is kept: files go to the same subfolders below the music folder, and sync compares the whole tree. **Wi-Fi for automatic sync:** under **Wi-Fi network for automatic sync**, tap **Choose network** to pick one of the networks in range. Automatic sync then runs only when the phone is connected to exactly that network. **Any Wi-Fi** removes the choice. Choosing needs location permission and location turned on, because Android only shows network names then.
+
+**Second sync server:** under **Second sync server**, turn the switch on to let another system copy the synced music from this device. Set the port (default **47831**, 1024-65535) and a **Key** of at least 16 characters, then tap **Apply**. Requests need `Authorization: Bearer <key>`. The server serves the audio files in the music folder with the same list and download format as the add-on (`GET /api/v1/files`, `GET /api/v1/files/<name>`). It runs as a foreground service with a notification and is off by default.
+
+**Storage limit:** the **Max synced music** slider (1–90%, default 20%) sets how much of the music volume synced files may use. When the limit is reached, the oldest synced files (by arrival time on the add-on) are removed first, so the newest content stays. Only files the sync added are removed; your own files are never touched. A single file larger than the limit is never synced. The sync also keeps 300 MB free on the device and stops early if it would go below that. Lowering the limit takes effect at the next sync. The player is rescanned after every sync that adds or removes files. After new files arrive, the folder is rescanned, which clears the blacklist as a normal rescan does. The folder must be picked once after this update so the app gets write access.
 
 After installing an update that changes the music database, tap **Update content** once. Home/work coordinates and other settings are kept.
 

@@ -34,6 +34,9 @@ interface PlayerPlaylistDao {
     @Insert
     suspend fun insertAll(entities: List<Song>)
 
+    @Query("DELETE FROM ${Song.TABLE_NAME} WHERE contentUri = :uri")
+    suspend fun deleteByUri(uri: String)
+
     @Query("DELETE FROM ${Song.TABLE_NAME}")
     suspend fun clear()
 

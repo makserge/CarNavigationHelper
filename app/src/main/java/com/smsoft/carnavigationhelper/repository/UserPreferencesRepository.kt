@@ -11,6 +11,9 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.smsoft.carnavigationhelper.data.GeoPoint
 import com.smsoft.carnavigationhelper.data.NavType
 import kotlinx.coroutines.flow.Flow
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import java.io.IOException
@@ -55,6 +58,30 @@ class UserPreferencesRepository @Inject constructor(
         const val DEFAULT_PLAYER_GAIN_DB = 0.0
         val PLAYER_GAIN_DB = doublePreferencesKey("player_gain_db")
         val PLAYER_GAIN_DB_RANGE = -12.0..12.0
+
+        // Content sync from the add-on (one way). The token is stored in the app's private preferences
+        const val DEFAULT_SYNC_URL = ""
+        val SYNC_URL = stringPreferencesKey("sync_url")
+        const val DEFAULT_SYNC_TOKEN = ""
+        val SYNC_TOKEN = stringPreferencesKey("sync_token")
+        const val DEFAULT_SYNC_AUTO = false
+        val SYNC_AUTO = booleanPreferencesKey("sync_auto")
+        // Synced music may use this share of the storage; the oldest synced files make room for new ones
+        const val DEFAULT_SYNC_MAX_PERCENT = 20
+        val SYNC_MAX_PERCENT_RANGE = 1..90
+        val SYNC_MAX_PERCENT = intPreferencesKey("sync_max_percent")
+        // Names of the files the sync added (JSON list). Only these are ever removed by the sync
+        val SYNC_TRACKED = stringPreferencesKey("sync_tracked")
+        // Automatic sync only runs on this exact Wi-Fi name; empty = any Wi-Fi
+        const val DEFAULT_SYNC_WIFI = ""
+        val SYNC_WIFI = stringPreferencesKey("sync_wifi_ssid")
+        // Second sync server (the car app serves its synced music to another system)
+        const val DEFAULT_SERVER_ENABLED = false
+        val SERVER_ENABLED = booleanPreferencesKey("server_enabled")
+        const val DEFAULT_SERVER_PORT = 47831
+        val SERVER_PORT = intPreferencesKey("server_port")
+        const val DEFAULT_SERVER_KEY = ""
+        val SERVER_KEY = stringPreferencesKey("server_key")
 
         // Number settings are typed as text, only values that parse and are in range may be saved
         fun isValidValue(key: Preferences.Key<out Any>, value: String): Boolean = when (key) {
@@ -118,6 +145,42 @@ class UserPreferencesRepository @Inject constructor(
             preferences[PLAYER_GAIN_DB] ?: DEFAULT_PLAYER_GAIN_DB
         }
 
+    val syncUrlFlow: Flow<String> = preferencesFlow
+        .map { preferences ->
+            preferences[SYNC_URL] ?: DEFAULT_SYNC_URL
+        }
+
+    val syncTokenFlow: Flow<String> = preferencesFlow
+        .map { preferences ->
+            preferences[SYNC_TOKEN] ?: DEFAULT_SYNC_TOKEN
+        }
+
+    val syncAutoFlow: Flow<Boolean> = preferencesFlow
+        .map { preferences -> preferences[SYNC_AUTO] ?: DEFAULT_SYNC_AUTO }
+
+    val syncWifiFlow: Flow<String> = preferencesFlow
+        .map { preferences -> preferences[SYNC_WIFI] ?: DEFAULT_SYNC_WIFI }
+
+    val serverEnabledFlow: Flow<Boolean> = preferencesFlow
+        .map { preferences -> preferences[SERVER_ENABLED] ?: DEFAULT_SERVER_ENABLED }
+
+    val serverPortFlow: Flow<Int> = preferencesFlow
+        .map { preferences -> preferences[SERVER_PORT] ?: DEFAULT_SERVER_PORT }
+
+    val serverKeyFlow: Flow<String> = preferencesFlow
+        .map { preferences -> preferences[SERVER_KEY] ?: DEFAULT_SERVER_KEY }
+
+    val syncMaxPercentFlow: Flow<Int> = preferencesFlow
+        .map { preferences -> preferences[SYNC_MAX_PERCENT] ?: DEFAULT_SYNC_MAX_PERCENT }
+
+    val syncTrackedFlow: Flow<Set<String>> = preferencesFlow
+        .map { preferences ->
+            val raw = preferences[SYNC_TRACKED] ?: return@map emptySet<String>()
+            runCatching { Json.decodeFromString(ListSerializer(String.serializer()), raw) }
+                .getOrDefault(emptyList())
+                .toSet()
+        }
+
     suspend fun setButtonPosition(x: Int, y: Int) {
         dataStore.edit { preferences ->
             preferences[BUTTON_POSITION_X] = x
@@ -134,6 +197,46 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setPlayerGain(gainDb: Double) {
         dataStore.edit { preferences ->
             preferences[PLAYER_GAIN_DB] = gainDb.coerceIn(PLAYER_GAIN_DB_RANGE)
+        }
+    }
+
+    suspend fun setSyncSettings(url: String, token: String) {
+        dataStore.edit { preferences ->
+            preferences[SYNC_URL] = url.trim()
+            preferences[SYNC_TOKEN] = token.trim()
+        }
+    }
+
+    suspend fun setSyncWifi(ssid: String) {
+        dataStore.edit { preferences -> preferences[SYNC_WIFI] = ssid.trim() }
+    }
+
+    suspend fun setServerEnabled(enabled: Boolean) {
+        dataStore.edit { preferences -> preferences[SERVER_ENABLED] = enabled }
+    }
+
+    suspend fun setServer(port: Int, key: String) {
+        dataStore.edit { preferences ->
+            preferences[SERVER_PORT] = port.coerceIn(1024, 65535)
+            preferences[SERVER_KEY] = key.trim()
+        }
+    }
+
+    suspend fun setSyncMaxPercent(percent: Int) {
+        dataStore.edit { preferences ->
+            preferences[SYNC_MAX_PERCENT] = percent.coerceIn(SYNC_MAX_PERCENT_RANGE)
+        }
+    }
+
+    suspend fun setSyncTracked(names: Set<String>) {
+        dataStore.edit { preferences ->
+            preferences[SYNC_TRACKED] = Json.encodeToString(ListSerializer(String.serializer()), names.sorted())
+        }
+    }
+
+    suspend fun setAutoSync(enabled: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SYNC_AUTO] = enabled
         }
     }
 

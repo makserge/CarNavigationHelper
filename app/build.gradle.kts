@@ -62,6 +62,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.media3.ui.compose.material3)
     implementation(libs.androidx.media3.session)
+    implementation(libs.androidx.work.runtime.ktx)
 
     implementation(project(":library"))
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.jar"))))

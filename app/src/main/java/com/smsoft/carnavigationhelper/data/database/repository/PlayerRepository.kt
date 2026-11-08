@@ -54,6 +54,20 @@ class PlayerRepository@Inject constructor(
         }
     }
 
+    // One file that a sync just copied: read it and add it to the playlist, so the totals follow during the sync
+    suspend fun addSong(context: Context, uri: Uri, fileName: String, fileSize: Long) {
+        val song = withContext(Dispatchers.IO) { readSong(context, ScanFile(uri, fileName, fileSize), null) }
+        withContext(NonCancellable) {
+            playerPlaylistDao.deleteByUri(uri.toString())
+            playerPlaylistDao.insertAll(listOf(song))
+        }
+    }
+
+    // One file that a sync just removed
+    suspend fun removeSong(uri: Uri) {
+        withContext(NonCancellable) { playerPlaylistDao.deleteByUri(uri.toString()) }
+    }
+
     // An audio file of the folder, name and size come from the folder listing
     private data class ScanFile(val uri: Uri, val fileName: String, val fileSize: Long)
 
